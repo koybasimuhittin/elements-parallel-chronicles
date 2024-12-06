@@ -12,7 +12,10 @@ workers = [worker.Worker(i + 1) for i in range(size - 1)]
 
 if rank == 0:
     manager.run()
+
+
 else:
     workers[rank - 1].run()
+
 
     

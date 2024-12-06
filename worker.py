@@ -10,6 +10,8 @@ class Worker:
     def __init__(self, rank):
         self.received_blocks = []
         self.rank = rank
+        self.state=0;
+
 
     def receive_blocks(self):
         """
@@ -30,4 +32,7 @@ class Worker:
         print(f"Worker {self.rank}: Ready to receive blocks.")
         self.receive_blocks()
         print(f"Worker {self.rank}: Finished processing.")
+
+    def run2(self):
+        self.state = comm.recv(source=0, tag=10)
 

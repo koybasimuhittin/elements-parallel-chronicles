@@ -99,6 +99,14 @@ class Manager:
             
         self.send_blocks()
 
+    def run2(self):
+        for _ in range(utils.R):
+            for i in range(1,self.worker_count+1):
+                comm.send(1, dest=i, tag=10)
+
+
+
+
         
         
         
