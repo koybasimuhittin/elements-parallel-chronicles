@@ -58,6 +58,7 @@ class Manager:
                 id = utils.coordinate_to_block_id(coord, N)
                 x, y = utils.block_id_to_block_index(id, N)
                 blocks[x][y].units[faction].append(coord)
+                blocks[x][y].coordinate_map[coord] = faction
             
         return blocks
         
@@ -84,7 +85,7 @@ class Manager:
     def send_blocks(self):
         for i in range(len(self.blocks)):
             for j in range(len(self.blocks[i])):
-                comm.send(self.blocks[i][j], dest=self.blocks[i][j].worker_rank, tag=1)
+                comm.isend(self.blocks[i][j], dest=self.blocks[i][j].worker_rank, tag=1)
 
     def run(self):
         utils.parse_general_info(self.lines)
@@ -100,14 +101,21 @@ class Manager:
         self.send_blocks()
 
     def run2(self):
-        for _ in range(utils.R):
-            for i in range(1,self.worker_count+1):
+            for i in range(1,self.worker_count):
+                print(i)
+                print("23423235")
                 for j in range(1, self.worker_count + 1):
                     if i==j:
                         comm.send(1, dest=j, tag=10)
                     else:
                         comm.send(0, dest=j, tag=10)
-                comm.recv(source=j,tag=2)
+                comm.recv(source=i,tag=MPI.ANY_TAG)
+                print("!!")
+                for j in range(1, self.worker_count + 1):
+                    comm.send(None,dest=j,tag=3)
+            for j in range(1, self.worker_count + 1):
+                comm.send(-1, dest=j, tag=10)
+
 
 
 

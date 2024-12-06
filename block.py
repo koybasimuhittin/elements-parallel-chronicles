@@ -1,5 +1,6 @@
 class Block:
     def __init__(self, units, top_left, bottom_right, block_id, worker_rank, adjacent_blocks):
+        self.coordinate_map = {}
         self.units = units 
         self.top_left = top_left
         self.bottom_right = bottom_right

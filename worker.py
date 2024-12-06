@@ -1,6 +1,6 @@
 from block import Block
 from mpi4py import MPI
-
+import utils
 comm = MPI.COMM_WORLD
 
 
@@ -10,7 +10,7 @@ class Worker:
     def __init__(self, rank):
         self.received_blocks = []
         self.rank = rank
-        self.state=0
+        self.state=-1
 
 
     def receive_blocks(self):
@@ -34,11 +34,30 @@ class Worker:
         print(f"Worker {self.rank}: Finished processing.")
 
     def run2(self):
-        self.state = comm.recv(source=0, tag=10)
+        while True:
+            self.state = comm.recv(source=0, tag=10)
+            if self.state == -1:
+                break
 
-        if self.state ==0:
-            while True:
-                coord,rank= comm.recv(source=MPI.ANY_SOURCE,tag=3)
+            if self.state ==0:
+                while True:
+                    a= comm.recv(source=MPI.ANY_SOURCE,tag=3)
+                    if a is None:
+                        break
+                    coord, rank =a[0],a[1]
 
+
+                    el = self.received_blocks[0].coordinate_map.get(coord)
+                    print(self.rank)
+                    comm.send(el,dest=rank,tag=4)
+            elif self.state==1:
+                comm.send([(5,6),self.rank],dest=4,tag=3)
+                el=comm.recv(source=4,tag=4)
+                if not el is None:
+                    print(el)
+                else:
+                    print("asdas")
+                comm.send("END", dest=0, tag=0)
+                comm.recv(source=MPI.ANY_SOURCE,tag=3)
 
 
