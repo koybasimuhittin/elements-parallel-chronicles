@@ -1,4 +1,4 @@
-import block  # Assuming `block` module is defined and contains the `Block` class.
+from block import Block
 from mpi4py import MPI
 
 comm = MPI.COMM_WORLD
@@ -10,7 +10,7 @@ class Worker:
     def __init__(self, rank):
         self.received_blocks = []
         self.rank = rank
-        self.state=0;
+        self.state=0
 
 
     def receive_blocks(self):

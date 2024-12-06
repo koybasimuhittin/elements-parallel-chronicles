@@ -1,5 +1,5 @@
 import re
-import block
+from block import Block
 import utils
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -49,7 +49,7 @@ class Manager:
                     "A": [],
                 }
                 
-                block_instance = block.Block(units, top_left, bottom_right, block_id, 0, adjacent_blocks)
+                block_instance = Block(units, top_left, bottom_right, block_id, 0, adjacent_blocks)
                 blocks[i].append(block_instance)
                 block_id += 1
 
@@ -96,7 +96,7 @@ class Manager:
             self.calculate_adjacent_blocks(self.blocks)
             print("Blocks:")
             self.print_blocks(self.blocks)
-            
+
         self.send_blocks()
 
     def run2(self):
