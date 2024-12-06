@@ -1,23 +1,16 @@
 import re
 import block
+import utils
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
 
 class Manager:
-
-    BLOCK_SIZE = 5
-
     def __init__(self, input_file, output_file, worker_count):
         self.input_file = input_file
         self.output_file = output_file
         self.worker_count = worker_count
         with open(input_file, "r") as file:
             self.lines = file.readlines()
-
-    def parse_general_info(self, lines):
-        first_line = lines[0].strip().split()
-        self.N = int(first_line[0])  # Grid size
-        self.W = int(first_line[1])  # Number of waves
-        self.T = int(first_line[2])  # Units per faction per wave
-        self.R = int(first_line[3])  # Rounds per wave
     
     def parse_wave_data(self, lines):
         wave_data = {}
@@ -40,13 +33,13 @@ class Manager:
     def generate_blocks(self, wave, N):
         blocks = []
         block_id = 0
-        for i in range(N // self.BLOCK_SIZE + N % self.BLOCK_SIZE):
+        for i in range(N // utils.BLOCK_SIZE + N % utils.BLOCK_SIZE):
             blocks.append([])
-            for j in range(N // self.BLOCK_SIZE + N % self.BLOCK_SIZE):
-                top_left = (i * self.BLOCK_SIZE, j * self.BLOCK_SIZE)
+            for j in range(N // utils.BLOCK_SIZE + N % utils.BLOCK_SIZE):
+                top_left = (i * utils.BLOCK_SIZE, j * utils.BLOCK_SIZE)
                 bottom_right = (
-                    min((i + 1) * self.BLOCK_SIZE, N) - 1,
-                    min((j + 1) * self.BLOCK_SIZE, N) - 1,
+                    min((i + 1) * utils.BLOCK_SIZE, N) - 1,
+                    min((j + 1) * utils.BLOCK_SIZE, N) - 1,
                 )
                 adjacent_blocks = []
                 units = {
@@ -55,15 +48,16 @@ class Manager:
                     "W": [],
                     "A": [],
                 }
-
-                for faction in wave:
-                    for coord in wave[faction]:
-                        if top_left[0] <= coord[0] <= bottom_right[0] and top_left[1] <= coord[1] <= bottom_right[1]:
-                            units[faction].append(coord)
                 
                 block_instance = block.Block(units, top_left, bottom_right, block_id, 0, adjacent_blocks)
                 blocks[i].append(block_instance)
                 block_id += 1
+
+        for faction in wave:
+            for coord in wave[faction]:
+                id = utils.coordinate_to_block_id(coord, N)
+                x, y = utils.block_id_to_block_index(id, N)
+                blocks[x][y].units[faction].append(coord)
             
         return blocks
         
@@ -86,15 +80,26 @@ class Manager:
         for i in range(len(blocks)):
             for j in range(len(blocks[i])):
                 print(blocks[i][j])
-    
+
+    def send_blocks(self):
+        for i in range(len(self.blocks)):
+            for j in range(len(self.blocks[i])):
+                comm.send(self.blocks[i][j], dest=self.blocks[i][j].worker_rank, tag=1)
+
     def run(self):
-        self.parse_general_info(self.lines)
+        utils.parse_general_info(self.lines)
         self.wave_data = self.parse_wave_data(self.lines)
-        for i in range(1, self.W + 1):
+        for i in range(1, utils.W + 1):
             print(f"Wave {i}")
-            self.blocks = self.generate_blocks(self.wave_data[i], self.N)
+            self.blocks = self.generate_blocks(self.wave_data[i], utils.N)
             self.assign_blocks_to_workers(self.blocks)
             self.calculate_adjacent_blocks(self.blocks)
+            print("Blocks:")
             self.print_blocks(self.blocks)
+            
+        self.send_blocks()
+
+        
+        
         
 
