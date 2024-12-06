@@ -1,10 +1,10 @@
 class Block:
-    def __init__(self, factions, top_left, bottom_right, block_id, process_rank, adjacent_blocks):
+    def __init__(self, factions, top_left, bottom_right, block_id, worker_rank, adjacent_blocks):
         self.factions = factions
         self.top_left = top_left
         self.bottom_right = bottom_right
         self.block_id = block_id
-        self.process_rank = process_rank
+        self.worker_rank = worker_rank
         self.adjacent_blocks = adjacent_blocks
 
 

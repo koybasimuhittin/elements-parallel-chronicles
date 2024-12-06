@@ -74,8 +74,13 @@ class Manager:
                 for x in range(i-1, i+2):
                     for y in range(j-1, j+2):
                         if 0 <= x < len(blocks) and 0 <= y < len(blocks[i]) and (x, y) != (i, j):
-                            adjacent_blocks.append({"id": blocks[x][y].block_id, "rank": blocks[x][y].process_rank})
+                            adjacent_blocks.append({"id": blocks[x][y].block_id, "rank": blocks[x][y].worker_rank})
                 blocks[i][j].adjacent_blocks = adjacent_blocks
+
+    def assign_blocks_to_workers(self, blocks):
+        for i in range(len(blocks)):
+            for j in range(len(blocks[i])):
+                blocks[i][j].worker_rank = (i + j) % self.worker_count + 1
 
     def print_blocks(self, blocks):
         for i in range(len(blocks)):
@@ -88,6 +93,7 @@ class Manager:
         for i in range(1, self.W + 1):
             print(f"Wave {i}")
             self.blocks = self.generate_blocks(self.wave_data[i], self.N)
+            self.assign_blocks_to_workers(self.blocks)
             self.calculate_adjacent_blocks(self.blocks)
             self.print_blocks(self.blocks)
         
