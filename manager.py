@@ -102,7 +102,12 @@ class Manager:
     def run2(self):
         for _ in range(utils.R):
             for i in range(1,self.worker_count+1):
-                comm.send(1, dest=i, tag=10)
+                for j in range(1, self.worker_count + 1):
+                    if i==j:
+                        comm.send(1, dest=j, tag=10)
+                    else:
+                        comm.send(0, dest=j, tag=10)
+                comm.recv(source=j,tag=2)
 
 
 

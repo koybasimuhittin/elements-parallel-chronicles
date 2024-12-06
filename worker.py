@@ -36,3 +36,9 @@ class Worker:
     def run2(self):
         self.state = comm.recv(source=0, tag=10)
 
+        if self.state ==0:
+            while True:
+                coord,rank= comm.recv(source=MPI.ANY_SOURCE,tag=3)
+
+
+
