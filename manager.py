@@ -3,7 +3,7 @@ import block
 
 class Manager:
 
-    BLOCK_SIZE = 3
+    BLOCK_SIZE = 5
 
     def __init__(self, input_file, output_file, worker_count):
         self.input_file = input_file
@@ -49,7 +49,7 @@ class Manager:
                     min((j + 1) * self.BLOCK_SIZE, N) - 1,
                 )
                 adjacent_blocks = []
-                factions = {
+                units = {
                     "E": [],
                     "F": [],
                     "W": [],
@@ -59,9 +59,9 @@ class Manager:
                 for faction in wave:
                     for coord in wave[faction]:
                         if top_left[0] <= coord[0] <= bottom_right[0] and top_left[1] <= coord[1] <= bottom_right[1]:
-                            factions[faction].append(coord)
+                            units[faction].append(coord)
                 
-                block_instance = block.Block(factions, top_left, bottom_right, block_id, 0, adjacent_blocks)
+                block_instance = block.Block(units, top_left, bottom_right, block_id, 0, adjacent_blocks)
                 blocks[i].append(block_instance)
                 block_id += 1
             
@@ -80,7 +80,7 @@ class Manager:
     def assign_blocks_to_workers(self, blocks):
         for i in range(len(blocks)):
             for j in range(len(blocks[i])):
-                blocks[i][j].worker_rank = (i + j) % self.worker_count + 1
+                blocks[i][j].worker_rank = blocks[i][j].block_id % self.worker_count + 1
 
     def print_blocks(self, blocks):
         for i in range(len(blocks)):
