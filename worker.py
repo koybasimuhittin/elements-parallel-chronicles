@@ -17,7 +17,7 @@ class Worker:
     def __init__(self, rank):
         self.rank = rank
         self.state = 0
-
+        self.block = None
 
     def receive_block(self):
         """
@@ -36,34 +36,40 @@ class Worker:
         while True:
             self.state = comm.irecv(source=0, tag=10).wait()
             print(f"Worker {self.rank}: Received state {self.state}.")
-            if(self.state == 1):
+            if (self.state == 1):
                 print(f"Worker {self.rank}: Ready to receive blocks.")
                 self.receive_block()
                 print(f"Worker {self.rank}: Finished processing.")
-                comm.send(MESSAGES['BLOCKS_RECEIVED']['message'], dest = MESSAGES['BLOCKS_RECEIVED']['dest'], tag = MESSAGES['BLOCKS_RECEIVED']['tag'])
+                comm.send(MESSAGES['BLOCKS_RECEIVED']['message'], dest=MESSAGES['BLOCKS_RECEIVED']['dest'],
+                          tag=MESSAGES['BLOCKS_RECEIVED']['tag'])
                 self.state = 0
-            elif(self.state == 2):
+            elif (self.state == 2):
                 print(f"Worker {self.rank}: Active.")
+
+
+
                 self.state = 0
-            elif(self.state == 3):
+            elif (self.state == 3):
                 print(f"Worker {self.rank}: Only send data.")
                 self.state = 0
             else:
                 pass
 
 
-def request_Data(self, coordinates):
-    destination = utils.coordinates_to_block_id(coordinates[0],coordinates[1], utils.N, comm.Get_size() - 1)
+def request_data(self, coordinates):
+    destination = utils.coordinates_to_block_id(coordinates[0], coordinates[1], utils.N, comm.Get_size() - 1)
     comm.send([coordinates, self.rank], dest=destination, tag=69)
     data = comm.recv(source=destination, tag=MPI.ANY_TAG)
 
-def send_Data(self):
-    a = comm.recv(source=MPI.ANY_SOURCE, tag=3)
+
+def send_data(self):
+    a = comm.recv(source=MPI.ANY_SOURCE, tag=69)
     if a is None:
-        self.state=-1
+        self.state = -1
         pass
     coord, rank = a[0], a[1]
-
+    data = self.block.get_grid_element(coord[0],coord[1])
+    comm.send(data, dest=rank, tag=69)
 
 
 
