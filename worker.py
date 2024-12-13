@@ -46,10 +46,11 @@ class Worker:
             elif (self.state == 2):
                 print(f"Worker {self.rank}: Active.")
 
+
+
                 self.state = 0
             elif (self.state == 3):
                 print(f"Worker {self.rank}: Only send data.")
-                send_data()
                 self.state = 0
             else:
                 pass
@@ -67,8 +68,9 @@ def send_data(self):
         self.state = -1
         pass
     coord, rank = a[0], a[1]
-    data = self.block.get_grid_element(coord[0], coord[1])
+    data = self.block.get_grid_element(coord[0],coord[1])
     comm.send(data, dest=rank, tag=69)
+
 
 
 def run2(self):
