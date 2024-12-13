@@ -48,7 +48,7 @@ class Worker:
 
 
 
-                self.s tate = 0
+                self.state = 0
             elif (self.state == 3):
                 print(f"Worker {self.rank}: Only send data.")
                 self.state = 0
