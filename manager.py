@@ -2,6 +2,7 @@ import re
 from block import Block
 import utils
 from mpi4py import MPI
+from constants import MESSAGES
 comm = MPI.COMM_WORLD
 
 class Manager:
@@ -71,6 +72,7 @@ class Manager:
 
     def send_blocks(self):
         for i in range(len(self.blocks)):
+                comm.send(1, dest=self.blocks[i].id, tag=10)
                 comm.send(self.blocks[i], dest=self.blocks[i].id, tag=1)
 
     def set_current_workers(self, x, y):
@@ -101,27 +103,30 @@ class Manager:
 
         self.send_blocks()
 
+        blocksReceived = [False for _ in range(self.worker_count)]
 
-        while True:
-            for x in [0, 1]:
-                for y in [0, 1]:
-                    current_workers = self.set_current_workers(x, y)
+        for i in range(1, self.worker_count + 1):
+            if comm.recv(source=i, tag=MESSAGES['BLOCKS_RECEIVED']['tag']):
+                blocksReceived[i - 1] = True
 
-    def run2(self):
-            for i in range(1,self.worker_count):
-                print(i)
-                print("23423235")
-                for j in range(1, self.worker_count + 1):
-                    if i==j:
-                        comm.send(1, dest=j, tag=10)
-                    else:
-                        comm.send(0, dest=j, tag=10)
-                comm.recv(source=i,tag=MPI.ANY_TAG)
-                print("!!")
-                for j in range(1, self.worker_count + 1):
-                    comm.send(None,dest=j,tag=3)
-            for j in range(1, self.worker_count + 1):
-                comm.send(-1, dest=j, tag=10)
+        print(blocksReceived)
+
+
+    # def run2(self):
+    #         for i in range(1,self.worker_count):
+    #             print(i)
+    #             print("23423235")
+    #             for j in range(1, self.worker_count + 1):
+    #                 if i==j:
+    #                     comm.send(1, dest=j, tag=10)
+    #                 else:
+    #                     comm.send(0, dest=j, tag=10)
+    #             comm.recv(source=i,tag=MPI.ANY_TAG)
+    #             print("!!")
+    #             for j in range(1, self.worker_count + 1):
+    #                 comm.send(None,dest=j,tag=3)
+    #         for j in range(1, self.worker_count + 1):
+    #             comm.send(-1, dest=j, tag=10)
 
 
 

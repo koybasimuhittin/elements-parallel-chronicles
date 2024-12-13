@@ -2,9 +2,12 @@ from block import Block
 from mpi4py import MPI
 import utils
 
+from constants import MESSAGES
+
 comm = MPI.COMM_WORLD
 
 
+# state 0: idle
 # state 1: recieve blocks
 # state 2: active
 # state 3: only send data
@@ -15,6 +18,7 @@ class Worker:
         self.blocks = []
         self.rank = rank
         self.state = -1
+
 
     def receive_blocks(self):
         """
@@ -31,18 +35,22 @@ class Worker:
         Main method to run the worker process.
         """
         while True:
-
-            if (self.state == 1):
+            self.state = comm.irecv(source=0, tag=10).wait()
+            print(f"Worker {self.rank}: Received state {self.state}.")
+            if(self.state == 1):
                 print(f"Worker {self.rank}: Ready to receive blocks.")
                 self.receive_blocks()
                 print(f"Worker {self.rank}: Finished processing.")
-
-            elif (self.state == 2):
+                comm.send(MESSAGES['BLOCKS_RECEIVED']['message'], dest = MESSAGES['BLOCKS_RECEIVED']['dest'], tag = MESSAGES['BLOCKS_RECEIVED']['tag'])
+                self.state = 0
+            elif(self.state == 2):
                 print(f"Worker {self.rank}: Active.")
-                pass
-            elif (self.state == 3):
+                self.state = 0
+            elif(self.state == 3):
                 print(f"Worker {self.rank}: Only send data.")
-            pass
+                self.state = 0
+            else:
+                pass
 
 
 def request_Data(self, coordinates):
