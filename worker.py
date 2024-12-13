@@ -1,6 +1,8 @@
 from block import Block
 from mpi4py import MPI
 import utils
+import time
+import random as rand
 
 from constants import MESSAGES
 
@@ -45,9 +47,9 @@ class Worker:
                 self.state = 0
             elif (self.state == 2):
                 print(f"Worker {self.rank}: Active.")
-
-
-
+                time.sleep(10 * rand.random())
+                comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'], dest=MESSAGES['ACTIVE_TIME_DONE']['dest'],
+                          tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])
                 self.state = 0
             elif (self.state == 3):
                 print(f"Worker {self.rank}: Only send data.")
@@ -63,13 +65,14 @@ def request_data(self, coordinates):
 
 
 def send_data(self):
-    a = comm.recv(source=MPI.ANY_SOURCE, tag=69)
-    if a is None:
-        self.state = -1
-        pass
-    coord, rank = a[0], a[1]
-    data = self.block.get_grid_element(coord[0],coord[1])
-    comm.send(data, dest=rank, tag=69)
+    while True:
+        a = comm.recv(source=MPI.ANY_SOURCE, tag=69)
+        if a is None:
+            self.state = 0
+            break
+        coord, rank = a[0], a[1]
+        data = self.block.get_grid_element(coord[0],coord[1])
+        comm.send(data, dest=rank, tag=69)
 
 
 

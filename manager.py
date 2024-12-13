@@ -77,15 +77,14 @@ class Manager:
 
     def set_current_workers(self, x, y):
         sqr_of_worker = int(self.worker_count ** 0.5)
-        current_workers = []
+        current_workers = [False for _ in range(self.worker_count)]
         for i in range(sqr_of_worker):
             for j in range(sqr_of_worker):
                 if(i % 2 == x and j % 2 == y):
-                    ## send start signal
-                    current_workers.append(i * sqr_of_worker + j + 1)
+                    comm.send(2, dest=i * sqr_of_worker + j + 1, tag=10)
+                    current_workers[i * sqr_of_worker + j] = True
                 else:
-                    ## send stop signal
-                    pass
+                    comm.send(3, dest=i * sqr_of_worker + j + 1, tag=10)
 
         return current_workers
 
@@ -108,6 +107,20 @@ class Manager:
         for i in range(1, self.worker_count + 1):
             if comm.recv(source=i, tag=MESSAGES['BLOCKS_RECEIVED']['tag']):
                 blocksReceived[i - 1] = True
+        
+        sqr_of_worker = int(self.worker_count ** 0.5)
+        for _ in range(utils.R):
+            for x in range(2):
+                for y in range(2):
+                    current_workers = self.set_current_workers(x, y)
+                    print(current_workers)
+                    for i in range(1, self.worker_count + 1):
+                        if current_workers[i - 1]:
+                            comm.recv(source = i, tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])
+                    for i in range (1, self.worker_count + 1):
+                        if not current_workers[i - 1]:
+                            comm.send(None, dest = i, tag=69)
+                            
 
         print(blocksReceived)
 
