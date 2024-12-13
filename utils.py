@@ -1,3 +1,5 @@
+global N, W, T, R
+
 def calculate_block_sizes(n, worker_count):
     sqr_of_worker = int(worker_count ** 0.5)
     initial_block_size = n // sqr_of_worker
