@@ -1,3 +1,4 @@
+from unit import EarthUnit,FireUnit,WaterUnit
 class Block:
     def __init__(self, units, top_left, bottom_right, id, adjacent_blocks, size):
         self.units = units 
@@ -11,10 +12,18 @@ class Block:
     def fill_grid(self):
         for faction in self.units:
             for unit in self.units[faction]:
-                self.grid[unit[0]][unit[1]] = faction
+                if faction == "E":
+                    self.grid[unit[0]][unit[1]] = EarthUnit(unit[0],unit[1])
+                elif faction == "F":
+                    self.grid[unit[0]][unit[1]] = FireUnit(unit[0],unit[1])
+                elif faction == "W":
+                    self.grid[unit[0]][unit[1]] = WaterUnit(unit[0],unit[1])
 
     def get_grid_element(self, x, y):
         return self.grid[x - self.top_left[0]][y - self.top_left[1]]
+
+    def is_coordinate_inside(self,x,y):
+        return self.top_left[0] <= x <= self.bottom_right[0] and self.top_left[1] <= y <= self.bottom_right[1]
                 
     def __str__(self):
         return f"Block {self.id} ({self.top_left}, {self.bottom_right}) - {self.units} - Adjacent Blocks : {self.adjacent_blocks}"

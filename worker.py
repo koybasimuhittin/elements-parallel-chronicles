@@ -46,11 +46,10 @@ class Worker:
             elif (self.state == 2):
                 print(f"Worker {self.rank}: Active.")
 
-
-
                 self.state = 0
             elif (self.state == 3):
                 print(f"Worker {self.rank}: Only send data.")
+                send_data()
                 self.state = 0
             else:
                 pass
@@ -68,9 +67,8 @@ def send_data(self):
         self.state = -1
         pass
     coord, rank = a[0], a[1]
-    data = self.block.get_grid_element(coord[0],coord[1])
+    data = self.block.get_grid_element(coord[0], coord[1])
     comm.send(data, dest=rank, tag=69)
-
 
 
 def run2(self):
@@ -96,3 +94,31 @@ def run2(self):
                 print("asdas")
             comm.send("END", dest=0, tag=0)
             comm.recv(source=MPI.ANY_SOURCE, tag=3)
+
+    def apply_damage(self, coordinates, attack_power):
+        destination = utils.coordinates_to_block_id(coordinates[0], coordinates[1], utils.N, comm.Get_size() - 1)
+        comm.send([coordinates, attack_power], dest=destination, tag=70)
+
+    def take_damage(self):
+        data = comm.recv(source=MPI.ANY_SOURCE, tag=70)
+        if data is None:
+            self.state = 0
+            pass
+        coord, damage = data[0], data[1]
+        unit = self.block.get_grid_element(coord[0], coord[1])
+        unit.damage_taken+=damage
+
+    def attack(self, unit):
+        """
+        Determine targets in the attack pattern and deal damage.
+        """
+
+        for dx, dy in unit.directions:
+            nx, ny = self.x + dx, self.y + dy
+            if 0 <= nx < utils.N and 0 <= ny < utils.N:
+                if self.block.is_coordinate_inside(nx, ny):
+                    enemy = self.block.get_grid_element(nx, ny)
+                    if enemy.unit_type == "." and enemy.unit_type == unit.unit_type:
+                        enemy.damage_taken += self.attack_power
+                else:
+                    self.apply_damage(self, (nx, ny), unit.attack_power)
