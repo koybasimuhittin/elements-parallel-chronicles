@@ -12,6 +12,9 @@ class Block:
         for faction in self.units:
             for unit in self.units[faction]:
                 self.grid[unit[0]][unit[1]] = faction
+
+    def get_grid_element(self, x, y):
+        return self.grid[x - self.top_left[0]][y - self.top_left[1]]
                 
     def __str__(self):
         return f"Block {self.id} ({self.top_left}, {self.bottom_right}) - {self.units} - Adjacent Blocks : {self.adjacent_blocks}"

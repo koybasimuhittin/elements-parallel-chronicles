@@ -15,12 +15,11 @@ comm = MPI.COMM_WORLD
 class Worker:
 
     def __init__(self, rank):
-        self.blocks = []
         self.rank = rank
-        self.state = -1
+        self.state = 0
 
 
-    def receive_blocks(self):
+    def receive_block(self):
         """
         Receive blocks from the manager (rank 0).
         """
@@ -28,7 +27,7 @@ class Worker:
         block_data = comm.recv(source=0, tag=1)
         print(f"Worker {self.rank}: Received block with ID {block_data.id} "
               f"from Manager.")
-        self.blocks.append(block_data)
+        self.block = block_data
 
     def run(self):
         """
@@ -39,7 +38,7 @@ class Worker:
             print(f"Worker {self.rank}: Received state {self.state}.")
             if(self.state == 1):
                 print(f"Worker {self.rank}: Ready to receive blocks.")
-                self.receive_blocks()
+                self.receive_block()
                 print(f"Worker {self.rank}: Finished processing.")
                 comm.send(MESSAGES['BLOCKS_RECEIVED']['message'], dest = MESSAGES['BLOCKS_RECEIVED']['dest'], tag = MESSAGES['BLOCKS_RECEIVED']['tag'])
                 self.state = 0
