@@ -101,10 +101,11 @@ class Manager:
 
         self.send_blocks()
 
-        for x in [0, 1]:
-            for y in [0, 1]:
-                current_workers = self.set_current_workers(x, y)
-                print(f"Current Workers: {current_workers}")
+
+        while True:
+            for x in [0, 1]:
+                for y in [0, 1]:
+                    current_workers = self.set_current_workers(x, y)
 
     def run2(self):
             for i in range(1,self.worker_count):

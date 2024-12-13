@@ -3,12 +3,16 @@ from mpi4py import MPI
 import utils
 comm = MPI.COMM_WORLD
 
+# state 1: recieve blocks
+# state 2: active
+# state 3: only send data
+
 class Worker:
 
     def __init__(self, rank):
         self.blocks = []
         self.rank = rank
-        self.state=-1
+        self.state = -1
 
 
     def receive_blocks(self):
@@ -26,9 +30,17 @@ class Worker:
         """
         Main method to run the worker process.
         """
-        print(f"Worker {self.rank}: Ready to receive blocks.")
-        self.receive_blocks()
-        print(f"Worker {self.rank}: Finished processing.")
+        while True:
+            if(self.state == 1):
+                print(f"Worker {self.rank}: Ready to receive blocks.")
+                self.receive_blocks()                             
+                print(f"Worker {self.rank}: Finished processing.")
+            elif(self.state == 2):
+                print(f"Worker {self.rank}: Active.")
+                pass
+            elif(self.state == 3):
+                print(f"Worker {self.rank}: Only send data.")
+                pass
 
     def run2(self):
         while True:
