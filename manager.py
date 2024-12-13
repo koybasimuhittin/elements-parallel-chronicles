@@ -107,14 +107,21 @@ class Manager:
                 print(f"Current Workers: {current_workers}")
 
     def run2(self):
-        for _ in range(utils.R):
-            for i in range(1,self.worker_count+1):
+            for i in range(1,self.worker_count):
+                print(i)
+                print("23423235")
                 for j in range(1, self.worker_count + 1):
                     if i==j:
                         comm.send(1, dest=j, tag=10)
                     else:
                         comm.send(0, dest=j, tag=10)
-                comm.recv(source=j,tag=2)
+                comm.recv(source=i,tag=MPI.ANY_TAG)
+                print("!!")
+                for j in range(1, self.worker_count + 1):
+                    comm.send(None,dest=j,tag=3)
+            for j in range(1, self.worker_count + 1):
+                comm.send(-1, dest=j, tag=10)
+
 
 
 
