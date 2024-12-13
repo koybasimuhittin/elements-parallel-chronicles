@@ -3,15 +3,12 @@ from mpi4py import MPI
 
 comm = MPI.COMM_WORLD
 
-
-
 class Worker:
 
     def __init__(self, rank):
-        self.received_blocks = []
+        self.blocks = []
         self.rank = rank
-        self.state=0
-
+        self.state = 0
 
     def receive_blocks(self):
         """
@@ -19,10 +16,9 @@ class Worker:
         """
 
         block_data = comm.recv(source=0, tag=1)
-        print(f"Worker {self.rank}: Received block with ID {block_data.block_id} "
+        print(f"Worker {self.rank}: Received block with ID {block_data.id} "
               f"from Manager.")
-        self.received_blocks.append(block_data)
-
+        self.blocks.append(block_data)
 
 
     def run(self):

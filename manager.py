@@ -30,74 +30,81 @@ class Manager:
                 wave_data[wave_index][faction] = coords
         return wave_data
 
-    def generate_blocks(self, wave, N):
+    def generate_blocks(self, wave, n, block_sizes):
         blocks = []
-        block_id = 0
-        for i in range(N // utils.BLOCK_SIZE + N % utils.BLOCK_SIZE):
-            blocks.append([])
-            for j in range(N // utils.BLOCK_SIZE + N % utils.BLOCK_SIZE):
-                top_left = (i * utils.BLOCK_SIZE, j * utils.BLOCK_SIZE)
-                bottom_right = (
-                    min((i + 1) * utils.BLOCK_SIZE, N) - 1,
-                    min((j + 1) * utils.BLOCK_SIZE, N) - 1,
-                )
-                adjacent_blocks = []
-                units = {
-                    "E": [],
-                    "F": [],
-                    "W": [],
-                    "A": [],
-                }
-                
-                block_instance = Block(units, top_left, bottom_right, block_id, 0, adjacent_blocks)
-                blocks[i].append(block_instance)
-                block_id += 1
+        block_ids = []
+        id = 1
+
+        top_left = (0, 0)
+        for i in range(len(block_sizes)):
+            block_top_left = top_left
+            block_ids.append([])
+            for j in range(len(block_sizes[i])):
+                bottom_right = (block_top_left[0] + block_sizes[i][j][0], block_top_left[1] + block_sizes[i][j][1])
+                blocks.append(Block({"E": [], "F": [], "W": [], "A": []}, block_top_left, bottom_right, id, [], block_sizes[i][j]))
+                block_ids[i].append(id)
+                id += 1
+                block_top_left = (block_top_left[0] + block_sizes[i][j][0], block_top_left[1])
+            top_left = (top_left[0], top_left[1] + block_sizes[i][0][1])
 
         for faction in wave:
             for coord in wave[faction]:
-                id = utils.coordinate_to_block_id(coord, N)
-                x, y = utils.block_id_to_block_index(id, N)
-                blocks[x][y].units[faction].append(coord)
+                id = utils.coordinates_to_block_id(coord[0], coord[1], n, self.worker_count)
+                blocks[id - 1].units[faction].append(coord)
             
-        return blocks
+        return blocks, block_ids
         
-    def calculate_adjacent_blocks(self, blocks):
-        for i in range(len(blocks)):
-            for j in range(len(blocks[i])):
+    def calculate_adjacent_blocks(self, block_ids, blocks):
+        for i in range(len(block_ids)):
+            for j in range(len(block_ids[i])):
                 adjacent_blocks = []
                 for x in range(i-1, i+2):
                     for y in range(j-1, j+2):
-                        if 0 <= x < len(blocks) and 0 <= y < len(blocks[i]) and (x, y) != (i, j):
-                            adjacent_blocks.append({"id": blocks[x][y].block_id, "rank": blocks[x][y].worker_rank})
-                blocks[i][j].adjacent_blocks = adjacent_blocks
+                        if 0 <= x < len(block_ids) and 0 <= y < len(block_ids[i]) and (x, y) != (i, j):
+                            adjacent_blocks.append(block_ids[x][y])
+                blocks[block_ids[i][j] - 1].adjacent_blocks = adjacent_blocks
 
-    def assign_blocks_to_workers(self, blocks):
-        for i in range(len(blocks)):
-            for j in range(len(blocks[i])):
-                blocks[i][j].worker_rank = blocks[i][j].block_id % self.worker_count + 1
 
     def print_blocks(self, blocks):
         for i in range(len(blocks)):
-            for j in range(len(blocks[i])):
-                print(blocks[i][j])
+                print(blocks[i])
 
     def send_blocks(self):
         for i in range(len(self.blocks)):
-            for j in range(len(self.blocks[i])):
-                comm.send(self.blocks[i][j], dest=self.blocks[i][j].worker_rank, tag=1)
+                comm.send(self.blocks[i], dest=self.blocks[i].id, tag=1)
+
+    def set_current_workers(self, x, y):
+        sqr_of_worker = int(self.worker_count ** 0.5)
+        current_workers = []
+        for i in range(sqr_of_worker):
+            for j in range(sqr_of_worker):
+                if(i % 2 == x and j % 2 == y):
+                    ## send start signal
+                    current_workers.append(i * sqr_of_worker + j + 1)
+                else:
+                    ## send stop signal
+                    pass
+
+        return current_workers
+
 
     def run(self):
         utils.parse_general_info(self.lines)
+        self.block_sizes = utils.calculate_block_sizes(utils.N, self.worker_count)
         self.wave_data = self.parse_wave_data(self.lines)
         for i in range(1, utils.W + 1):
             print(f"Wave {i}")
-            self.blocks = self.generate_blocks(self.wave_data[i], utils.N)
-            self.assign_blocks_to_workers(self.blocks)
-            self.calculate_adjacent_blocks(self.blocks)
+            self.blocks, self.block_ids = self.generate_blocks(self.wave_data[i], utils.N, self.block_sizes)
+            self.calculate_adjacent_blocks(self.block_ids, self.blocks)
             print("Blocks:")
             self.print_blocks(self.blocks)
 
         self.send_blocks()
+
+        for x in [0, 1]:
+            for y in [0, 1]:
+                current_workers = self.set_current_workers(x, y)
+                print(f"Current Workers: {current_workers}")
 
     def run2(self):
         for _ in range(utils.R):
