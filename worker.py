@@ -10,13 +10,14 @@ comm = MPI.COMM_WORLD
 worker_count = comm.Get_size() - 1
 sqr_of_worker_count = worker_count ** 0.5
 
+
 def print_grid(grid):
     string = ""
     for row in grid:
         row_str = ""
         for cell in row:
             row_str += str(cell) + ""
-        string += "".join(row_str) + "\n"   
+        string += "".join(row_str) + "\n"
     return string
 
 
@@ -67,7 +68,6 @@ class Worker:
         elif position == 7:
             # All rows, first 2 columns
             return [row[0:3] for row in self.block.grid]
-        
 
     def run(self):
         """
@@ -86,10 +86,11 @@ class Worker:
                 print(f"Worker {self.rank}: Receiving boundaries.")
                 for neighbor in self.block.adjacent_blocks:
                     data = comm.recv(source=neighbor['block_id'], tag=10)
-                    print(f"Worker {self.rank}: Received boundary data from Worker {neighbor['block_id']}. Data: \n{print_grid(data)}")
+                    print(
+                        f"Worker {self.rank}: Received boundary data from Worker {neighbor['block_id']}. Data: \n{print_grid(data)}")
 
                 comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'], dest=MESSAGES['ACTIVE_TIME_DONE']['dest'],
-                          tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])    
+                          tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])
                 self.state = 0
 
             elif self.state == 3:
@@ -100,20 +101,21 @@ class Worker:
                         comm.send(self.extract_block(neighbor['position']), dest=neighbor['block_id'], tag=10)
                 self.state = 0
 
-            elif self.state == 4: # attack phase one of the 4 groups attacks
+            elif self.state == 4:  # attack phase one of the 4 groups attacks
                 for i in range(len(self.block.grid)):
                     for j in range(len(self.block.grid[0])):
                         if self.block.grid[i][j] != '.':
-                            self.attack(self, self.block.grid[i][j])
-                
-                comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'], dest=MESSAGES['ACTIVE_TIME_DONE']['dest'], tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])
+                            self.attack( self.block.grid[i][j])
+
+                comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'], dest=MESSAGES['ACTIVE_TIME_DONE']['dest'],
+                          tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])
                 self.state = 0
 
-            elif self.state == 5: # other 3 takes the damages
-                self.take_damage(self)
+            elif self.state == 5:  # other 3 takes the damages
+                self.take_damage()
                 self.state = 0
 
-            elif self.state == 6: # resolution phase
+            elif self.state == 6:  # resolution phase
                 for i in range(len(self.block.grid)):
                     for j in range(len(self.block.grid[0])):
                         if self.block.grid[i][j] != '.':
@@ -128,7 +130,7 @@ class Worker:
                             if not unit.is_alive():  # unit is dead !!!! TODO: add inferno ability
                                 self.block[i][j] = '.'
 
-            elif self.state == 8: # heal phase
+            elif self.state == 8:  # heal phase
                 for i in range(len(self.block.grid)):
                     for j in range(len(self.block.grid[0])):
                         if self.block.grid[i][j] != '.':
@@ -137,16 +139,17 @@ class Worker:
                                 unit.heal()
                             unit.attack_done = False
 
+
+
+
             else:
                 pass
-
 
     def apply_damage(self, coordinates, unit: Unit | EarthUnit | FireUnit | WaterUnit | AirUnit):
         destination = utils.coordinates_to_block_id(coordinates[0], coordinates[1], utils.N, worker_count)
         comm.send([coordinates, unit.attack_power, unit.unit_type, self.rank], dest=destination, tag=70)
         is_attack_successful = comm.recv(source=destination, tag=70)
         return is_attack_successful
-
 
     def take_damage(self):
         while True:
@@ -162,11 +165,11 @@ class Worker:
                 enemy.damage_taken += damage
                 comm.send(True, dest=rank, tag=70)
 
-
-    def attack(self, unit: Unit | EarthUnit | FireUnit | WaterUnit | AirUnit) :
+    def attack(self, unit: Unit | EarthUnit | FireUnit | WaterUnit | AirUnit):
         """
         Determine targets in the attack pattern and deal damage.
         """
+
         def attack_to_coord(x, y):
             if 0 <= x < utils.N and 0 <= y < utils.N:
                 if self.block.is_coordinate_inside(x, y):
@@ -176,26 +179,24 @@ class Worker:
                         unit.attack_done = True
                         return True
                 else:
-                    is_attack_successful = self.apply_damage(self, (x, y), unit.attack_power)
+                    is_attack_successful = self.apply_damage((x, y), unit.attack_power)
                     if is_attack_successful:
                         unit.attack_done = True
                         return True
-                    
+
             return False
 
         for dx, dy in unit.directions:
             nx, ny = unit.x + dx, unit.y + dy
             is_attack_done = attack_to_coord(nx, ny)
-            if not (is_attack_done) and unit.unit_type == 'A' :
+            if not (is_attack_done) and unit.unit_type == 'A':
                 nx, ny = nx + dx, ny + dy
-                attack_to_coord(nx,ny)
-
+                attack_to_coord(nx, ny)
 
     def request_data(self, coordinates):
         destination = utils.coordinates_to_block_id(coordinates[0], coordinates[1], utils.N, comm.Get_size() - 1)
         comm.send([coordinates, self.rank], dest=destination, tag=69)
         data = comm.recv(source=destination, tag=MPI.ANY_TAG)
-
 
     def send_data(self):
         a = comm.recv(source=MPI.ANY_SOURCE, tag=69)
@@ -232,7 +233,3 @@ def run2(self):
             comm.send("END", dest=0, tag=0)
             comm.recv(source=MPI.ANY_SOURCE, tag=3)
 """
-
-
-
-

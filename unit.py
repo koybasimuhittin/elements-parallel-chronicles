@@ -22,7 +22,6 @@ class Unit:
         """
         return self.health > 0
 
-
     def __str__(self):
         return self.unit_type
 
