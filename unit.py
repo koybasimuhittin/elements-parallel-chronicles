@@ -22,11 +22,6 @@ class Unit:
         """
         return self.health > 0
 
-    def reset(self):
-        """
-        Reset any state at the start of a new wave/round.
-        """
-        self.attack_targets.clear()
 
     def __str__(self):
         return self.unit_type
@@ -41,11 +36,11 @@ class EarthUnit(Unit):
         super().__init__(unit_type="E", x=x, y=y, max_health=18, attack_power=2, healing_rate=3)
         self.directions = [(0, -1), (0, 1), (-1, 0), (1, 0)]
 
-    def fortify(self, incoming_damage):
+    def fortify(self):
         """
         Reduce incoming damage by 50% (rounded down).
         """
-        return max(0, incoming_damage // 2)
+        self.damage_taken =  max(0, self.damage_taken // 2)
 
 
     def heal(self):
@@ -87,27 +82,27 @@ class WaterUnit(Unit):
         super().__init__(unit_type="W", x=x, y=y, max_health=14, attack_power=3, healing_rate=2)
         self.directions= [(-1, -1), (1, 1), (-1, 1), (1, -1)]
 
-    def flood(self, battlefield):
-        neutral_cells = []
-        directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+    # def flood(self, battlefield):
+    #     neutral_cells = []
+    #     directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
-        for dx, dy in directions:
-            nx, ny = self.x + dx, self.y + dy
-            if 0 <= nx < battlefield.size and 0 <= ny < battlefield.size:
-                if battlefield.grid[ny][nx] == ".":
-                    neutral_cells.append((ny, nx))
+    #     for dx, dy in directions:
+    #         nx, ny = self.x + dx, self.y + dy
+    #         if 0 <= nx < battlefield.size and 0 <= ny < battlefield.size:
+    #             if battlefield.grid[ny][nx] == ".":
+    #                 neutral_cells.append((ny, nx))
 
-        neutral_cells.sort(key=lambda cell: (cell[0], cell[1]))
+    #     neutral_cells.sort(key=lambda cell: (cell[0], cell[1]))
 
-        if neutral_cells:
-            ny, nx = neutral_cells[0]
-            battlefield.grid[ny][nx] = "W"
-            new_water_unit = WaterUnit(nx, ny)
-            print(f"Water unit at ({self.x}, {self.y}) converts adjacent cell ({nx}, {ny}) to Water unit.")
-            return new_water_unit
-        else:
-            print(f"Water unit at ({self.x}, {self.y}) found no adjacent neutral cells to convert.")
-        return None
+    #     if neutral_cells:
+    #         ny, nx = neutral_cells[0]
+    #         battlefield.grid[ny][nx] = "W"
+    #         new_water_unit = WaterUnit(nx, ny)
+    #         print(f"Water unit at ({self.x}, {self.y}) converts adjacent cell ({nx}, {ny}) to Water unit.")
+    #         return new_water_unit
+    #     else:
+    #         print(f"Water unit at ({self.x}, {self.y}) found no adjacent neutral cells to convert.")
+    #     return None
 
     def heal(self):
         self.health = min(14, self.health + self.healing_rate)
@@ -122,32 +117,32 @@ class AirUnit(Unit):
         super().__init__(unit_type="A", x=x, y=y, max_health=10, attack_power=2, healing_rate=2)
         self.directions = [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
 
-    def windrush(self, battlefield):
-        current_attack_count = self.count_possible_attacks(self.x, self.y, battlefield)
-        best_move = None
-        best_attack_count = current_attack_count
+    # def windrush(self, battlefield):
+    #     current_attack_count = self.count_possible_attacks(self.x, self.y, battlefield)
+    #     best_move = None
+    #     best_attack_count = current_attack_count
 
-        directions = [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
-        for dx, dy in directions:
-            nx, ny = self.x + dx, self.y + dy
-            if 0 <= nx < battlefield.size and 0 <= ny < battlefield.size:
-                if battlefield.grid[ny][nx] == ".":
-                    attack_count = self.count_possible_attacks(nx, ny, battlefield)
-                    if attack_count > best_attack_count:
-                        best_attack_count = attack_count
-                        best_move = (nx, ny)
-                    elif attack_count == best_attack_count and best_move is not None:
-                        # Tie-breaking rules by y, then x
-                        if ny < best_move[1] or (ny == best_move[1] and nx < best_move[0]):
-                            best_move = (nx, ny)
+    #     directions = [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
+    #     for dx, dy in directions:
+    #         nx, ny = self.x + dx, self.y + dy
+    #         if 0 <= nx < battlefield.size and 0 <= ny < battlefield.size:
+    #             if battlefield.grid[ny][nx] == ".":
+    #                 attack_count = self.count_possible_attacks(nx, ny, battlefield)
+    #                 if attack_count > best_attack_count:
+    #                     best_attack_count = attack_count
+    #                     best_move = (nx, ny)
+    #                 elif attack_count == best_attack_count and best_move is not None:
+    #                     # Tie-breaking rules by y, then x
+    #                     if ny < best_move[1] or (ny == best_move[1] and nx < best_move[0]):
+    #                         best_move = (nx, ny)
 
-        if best_move:
-            battlefield.grid[self.y][self.x] = "."
-            self.x, self.y = best_move
-            battlefield.grid[self.y][self.x] = self.unit_type
-            print(f"Air unit moved to ({self.x}, {self.y}).")
-        else:
-            print(f"Air unit at ({self.x}, {self.y}) did not move (best position retained).")
+    #     if best_move:
+    #         battlefield.grid[self.y][self.x] = "."
+    #         self.x, self.y = best_move
+    #         battlefield.grid[self.y][self.x] = self.unit_type
+    #         print(f"Air unit moved to ({self.x}, {self.y}).")
+    #     else:
+    #         print(f"Air unit at ({self.x}, {self.y}) did not move (best position retained).")
 
     def heal(self):
         self.health = min(10, self.health + self.healing_rate)

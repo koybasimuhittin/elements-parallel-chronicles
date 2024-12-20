@@ -1,7 +1,7 @@
 from block import Block
 from mpi4py import MPI
 import utils
-import unit
+from unit import Unit, EarthUnit, FireUnit, WaterUnit, AirUnit
 import time
 
 from constants import MESSAGES
@@ -40,7 +40,7 @@ class Worker:
         block_data = comm.recv(source=0, tag=1)
         print(f"Worker {self.rank}: Received block with ID {block_data.id} "
               f"from Manager.")
-        self.block = block_data
+        self.block: Block = block_data
 
     def extract_block(self, position):
         if position == 0:
@@ -81,6 +81,7 @@ class Worker:
                 comm.send(MESSAGES['BLOCKS_RECEIVED']['message'], dest=MESSAGES['BLOCKS_RECEIVED']['dest'],
                           tag=MESSAGES['BLOCKS_RECEIVED']['tag'])
                 self.state = 0
+
             elif self.state == 2:
                 print(f"Worker {self.rank}: Receiving boundaries.")
                 for neighbor in self.block.adjacent_blocks:
@@ -90,6 +91,7 @@ class Worker:
                 comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'], dest=MESSAGES['ACTIVE_TIME_DONE']['dest'],
                           tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])    
                 self.state = 0
+
             elif self.state == 3:
                 print(f"Worker {self.rank}: Sending boundaries.")
                 for neighbor in self.block.adjacent_blocks:
@@ -97,56 +99,112 @@ class Worker:
                         print(f"Worker {self.rank}: Sending block to Worker {neighbor['block_id']}.")
                         comm.send(self.extract_block(neighbor['position']), dest=neighbor['block_id'], tag=10)
                 self.state = 0
+
             elif self.state == 4: # attack phase one of the 4 groups attacks
-                for i in range(len(self.block)):
-                    for j in range(len(self.block[0])):
-                        if self.block[i][j] != '.':
-                            attack(self, self.block[i][j])
+                for i in range(len(self.block.grid)):
+                    for j in range(len(self.block.grid[0])):
+                        if self.block.grid[i][j] != '.':
+                            self.attack(self, self.block.grid[i][j])
+                
+                comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'], dest=MESSAGES['ACTIVE_TIME_DONE']['dest'], tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])
+                self.state = 0
+
             elif self.state == 5: # other 3 takes the damages
-                take_damage(self)
+                self.take_damage(self)
+                self.state = 0
 
             elif self.state == 6: # resolution phase
-                for i in range(len(self.block)):
-                    for j in range(len(self.block[0])):
-                        if self.block[i][j] != '.':
-                            unit = self.block[i][j]
+                for i in range(len(self.block.grid)):
+                    for j in range(len(self.block.grid[0])):
+                        if self.block.grid[i][j] != '.':
+                            unit: Unit = self.block.grid[i][j]
                             if unit.unit_type == 'E':
-                                unit.health -= unit.fortify()
+                                unit: EarthUnit
+                                unit.fortify()
+
                             unit.health -= unit.damage_taken
                             unit.damage_taken = 0
-                            if not unit.is_alive():  # unit is dead !!!! add inferno ability
+
+                            if not unit.is_alive():  # unit is dead !!!! TODO: add inferno ability
                                 self.block[i][j] = '.'
 
-            elif self.state == 8:
-                for i in range(len(self.block)):
-                    for j in range(len(self.block[0])):
-                        if self.block[i][j] != '.':
-                            unit = self.block[i][j]
+            elif self.state == 8: # heal phase
+                for i in range(len(self.block.grid)):
+                    for j in range(len(self.block.grid[0])):
+                        if self.block.grid[i][j] != '.':
+                            unit = self.block.grid[i][j]
                             if not unit.attack_done:
                                 unit.heal()
                             unit.attack_done = False
-
-
-
 
             else:
                 pass
 
 
-def request_data(self, coordinates):
-    destination = utils.coordinates_to_block_id(coordinates[0], coordinates[1], utils.N, comm.Get_size() - 1)
-    comm.send([coordinates, self.rank], dest=destination, tag=69)
-    data = comm.recv(source=destination, tag=MPI.ANY_TAG)
+    def apply_damage(self, coordinates, unit: Unit | EarthUnit | FireUnit | WaterUnit | AirUnit):
+        destination = utils.coordinates_to_block_id(coordinates[0], coordinates[1], utils.N, worker_count)
+        comm.send([coordinates, unit.attack_power, unit.unit_type, self.rank], dest=destination, tag=70)
+        is_attack_successful = comm.recv(source=destination, tag=70)
+        return is_attack_successful
 
 
-def send_data(self):
-    a = comm.recv(source=MPI.ANY_SOURCE, tag=69)
-    if a is None:
-        self.state = -1
-        pass
-    coord, rank = a[0], a[1]
-    data = self.block.get_grid_element(coord[0], coord[1])
-    comm.send(data, dest=rank, tag=69)
+    def take_damage(self):
+        while True:
+            data = comm.recv(source=MPI.ANY_SOURCE, tag=70)
+            if data is None:
+                self.state = 0
+                return
+            coord, damage, unit_type, rank = data[0], data[1], data[2], data[3]
+            enemy: Unit = self.block.get_grid_element(coord[0], coord[1])
+            if not (enemy == "." or enemy.unit_type == unit_type):
+                comm.send(False, dest=rank, tag=70)
+            else:
+                enemy.damage_taken += damage
+                comm.send(True, dest=rank, tag=70)
+
+
+    def attack(self, unit: Unit | EarthUnit | FireUnit | WaterUnit | AirUnit) :
+        """
+        Determine targets in the attack pattern and deal damage.
+        """
+        def attack_to_coord(x, y):
+            if 0 <= x < utils.N and 0 <= y < utils.N:
+                if self.block.is_coordinate_inside(x, y):
+                    enemy: Unit = self.block.get_grid_element(x, y)
+                    if not (enemy == "." or enemy.unit_type == unit.unit_type):
+                        enemy.damage_taken += unit.attack_power
+                        unit.attack_done = True
+                        return True
+                else:
+                    is_attack_successful = self.apply_damage(self, (x, y), unit.attack_power)
+                    if is_attack_successful:
+                        unit.attack_done = True
+                        return True
+                    
+            return False
+
+        for dx, dy in unit.directions:
+            nx, ny = unit.x + dx, unit.y + dy
+            is_attack_done = attack_to_coord(nx, ny)
+            if not (is_attack_done) and unit.unit_type == 'A' :
+                nx, ny = nx + dx, ny + dy
+                attack_to_coord(nx,ny)
+
+
+    def request_data(self, coordinates):
+        destination = utils.coordinates_to_block_id(coordinates[0], coordinates[1], utils.N, comm.Get_size() - 1)
+        comm.send([coordinates, self.rank], dest=destination, tag=69)
+        data = comm.recv(source=destination, tag=MPI.ANY_TAG)
+
+
+    def send_data(self):
+        a = comm.recv(source=MPI.ANY_SOURCE, tag=69)
+        if a is None:
+            self.state = -1
+            pass
+        coord, rank = a[0], a[1]
+        data = self.block.get_grid_element(coord[0], coord[1])
+        comm.send(data, dest=rank, tag=69)
 
 
 """
@@ -176,50 +234,5 @@ def run2(self):
 """
 
 
-def apply_damage(self, coordinates, unit):
-    destination = utils.coordinates_to_block_id(coordinates[0], coordinates[1], utils.N, comm.Get_size() - 1)
-    comm.send([coordinates, unit.attack_power, unit.unit_type, self.rank], dest=destination, tag=70)
-    is_attack_successful = comm.recv(source=destination, tag=70)
-    return is_attack_successful
 
-
-def take_damage(self):
-    while True:
-        data = comm.recv(source=MPI.ANY_SOURCE, tag=70)
-        if data is None:
-            self.state = 0
-            return
-        coord, damage, unit_type, rank = data[0], data[1], data[2], data[3]
-        enemy = self.block.get_grid_element(coord[0], coord[1])
-        if not (enemy.unit_type == "." or enemy.unit_type == unit_type):
-            comm.send(False, dest=rank, tag=70)
-        else:
-            enemy.damage_taken += damage
-            comm.send(True, dest=rank, tag=70)
-
-
-def attack(self, unit):
-    """
-    Determine targets in the attack pattern and deal damage.
-    """
-    def attack_to_coord(x, y):
-        if 0 <= x < utils.N and 0 <= y < utils.N:
-            if self.block.is_coordinate_inside(x, y):
-                enemy = self.block.get_grid_element(x, y)
-                if not (enemy.unit_type == "." or enemy.unit_type == unit.unit_type):
-                    enemy.damage_taken += self.attack_power
-                    unit.attack_done = True
-                    return True
-            else:
-                is_attack_successful = self.apply_damage(self, (x, y), unit.attack_power)
-                if is_attack_successful:
-                    unit.attack_done = True
-                    return True
-
-    for dx, dy in unit.directions:
-        nx, ny = unit.x + dx, unit.y + dy
-        is_attack_done = attack_to_coord(nx,ny)
-        if not (is_attack_done) and unit.unit_type == 'A' :
-            nx, ny = nx + dx, ny + dy
-            attack_to_coord(nx,ny)
 

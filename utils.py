@@ -37,6 +37,8 @@ def coordinates_to_block_id(x, y, n, worker_count):
             return (x // (block_size + 1)) + y // (block_size + 1) * sqr_of_worker_count + 1 
         
 def is_current_worker(worker_id, current_worker_group):
+    if current_worker_group == -1:
+        return True
     worker_id -= 1
     x = worker_id // sqr_of_worker_count
     y = worker_id % sqr_of_worker_count

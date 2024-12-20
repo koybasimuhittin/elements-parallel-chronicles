@@ -84,16 +84,24 @@ class Manager:
                 comm.send({'state': 1}, dest=self.blocks[i].id, tag=10)
                 comm.send(self.blocks[i], dest=self.blocks[i].id, tag=1)
 
+    def set_states(self, states, workers, worker_group):
+        for i in range(1, self.worker_count + 1):
+            if workers[i - 1]:
+                comm.send({'state': states[0], 'current_worker_group': worker_group}, dest=i, tag=10)
+            else:
+                comm.send({'state': states[1], 'current_worker_group': worker_group}, dest=i, tag=10)
+
     def set_current_workers(self, x, y):
         sqr_of_worker = int(self.worker_count ** 0.5)
+        if x == -1 and y == -1:
+            current_workers = [True for _ in range(self.worker_count)]
+            return current_workers
+        
         current_workers = [False for _ in range(self.worker_count)]
         for i in range(sqr_of_worker):
             for j in range(sqr_of_worker):
                 if(i % 2 == x and j % 2 == y):
-                    comm.send({'state': 2, 'current_worker_group': 2 * x + y}, dest=i * sqr_of_worker + j + 1, tag=10)
                     current_workers[i * sqr_of_worker + j] = True
-                else:
-                    comm.send({'state': 3, 'current_worker_group': 2 * x + y}, dest=i * sqr_of_worker + j + 1, tag=10)
 
         return current_workers
 
@@ -122,13 +130,27 @@ class Manager:
             for x in range(2):
                 for y in range(2):
                     current_workers = self.set_current_workers(x, y)
-                    print(current_workers)
+                    self.set_states([2, 3], current_workers, x * 2 + y)
                     for i in range(1, self.worker_count + 1):
                         if current_workers[i - 1]:
                             comm.recv(source = i, tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])
                     for i in range (1, self.worker_count + 1):
                         if not current_workers[i - 1]:
                             comm.send(None, dest = i, tag=69)
+
+
+            for x in range(2):
+                for y in range(2):
+                    current_workers = self.set_current_workers(x, y)
+                    self.set_states([4, 5], current_workers, x * 2 + y)
+                    for i in range(1, self.worker_count + 1):
+                        if current_workers[i - 1]:
+                             comm.recv(source = i, tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])
+                    for i in range(1, self.worker_count + 1):
+                        if not current_workers[i - 1]:
+                            comm.send(None, dest = i, tag=70)
+            
+
                             
 
         print(blocksReceived)
