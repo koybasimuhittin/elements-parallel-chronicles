@@ -38,11 +38,11 @@ class EarthUnit(Unit):
         super().__init__(unit_type="E", x=x, y=y, max_health=18, attack_power=2, healing_rate=3)
         self.directions = [(0, -1), (0, 1), (-1, 0), (1, 0)]
 
-    def fortify(self):
+    def fortify(self, incoming_damage):
         """
         Reduce incoming damage by 50% (rounded down).
         """
-        return max(0, self.damage_taken // 2)
+        return max(0, incoming_damage // 2)
 
 
     def heal(self):
