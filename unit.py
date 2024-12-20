@@ -78,7 +78,6 @@ class FireUnit(Unit):
         self.health = min(12, self.health + self.healing_rate)
 
 
-
 class WaterUnit(Unit):
     """
     Water unit class with specific attributes and abilities.
@@ -113,5 +112,44 @@ class WaterUnit(Unit):
     def heal(self):
         self.health = min(14, self.health + self.healing_rate)
 
+
+class AirUnit(Unit):
+    """
+    Air unit class with specific attributes and abilities.
+    """
+
+    def __init__(self, x, y):
+        super().__init__(unit_type="A", x=x, y=y, max_health=10, attack_power=2, healing_rate=2)
+        self.directions = [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
+
+    def windrush(self, battlefield):
+        current_attack_count = self.count_possible_attacks(self.x, self.y, battlefield)
+        best_move = None
+        best_attack_count = current_attack_count
+
+        directions = [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
+        for dx, dy in directions:
+            nx, ny = self.x + dx, self.y + dy
+            if 0 <= nx < battlefield.size and 0 <= ny < battlefield.size:
+                if battlefield.grid[ny][nx] == ".":
+                    attack_count = self.count_possible_attacks(nx, ny, battlefield)
+                    if attack_count > best_attack_count:
+                        best_attack_count = attack_count
+                        best_move = (nx, ny)
+                    elif attack_count == best_attack_count and best_move is not None:
+                        # Tie-breaking rules by y, then x
+                        if ny < best_move[1] or (ny == best_move[1] and nx < best_move[0]):
+                            best_move = (nx, ny)
+
+        if best_move:
+            battlefield.grid[self.y][self.x] = "."
+            self.x, self.y = best_move
+            battlefield.grid[self.y][self.x] = self.unit_type
+            print(f"Air unit moved to ({self.x}, {self.y}).")
+        else:
+            print(f"Air unit at ({self.x}, {self.y}) did not move (best position retained).")
+
+    def heal(self):
+        self.health = min(10, self.health + self.healing_rate)
 
 

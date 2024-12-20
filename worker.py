@@ -198,20 +198,28 @@ def take_damage(self):
             comm.send(True, dest=rank, tag=70)
 
 
-def attack(self, unit): # !!!!!! add air attack
+def attack(self, unit):
     """
     Determine targets in the attack pattern and deal damage.
     """
-
-    for dx, dy in unit.directions:
-        nx, ny = unit.x + dx, unit.y + dy
-        if 0 <= nx < utils.N and 0 <= ny < utils.N:
-            if self.block.is_coordinate_inside(nx, ny):
-                enemy = self.block.get_grid_element(nx, ny)
+    def attack_to_coord(x, y):
+        if 0 <= x < utils.N and 0 <= y < utils.N:
+            if self.block.is_coordinate_inside(x, y):
+                enemy = self.block.get_grid_element(x, y)
                 if not (enemy.unit_type == "." or enemy.unit_type == unit.unit_type):
                     enemy.damage_taken += self.attack_power
                     unit.attack_done = True
+                    return True
             else:
-                is_attack_successful = self.apply_damage(self, (nx, ny), unit.attack_power)
+                is_attack_successful = self.apply_damage(self, (x, y), unit.attack_power)
                 if is_attack_successful:
                     unit.attack_done = True
+                    return True
+
+    for dx, dy in unit.directions:
+        nx, ny = unit.x + dx, unit.y + dy
+        is_attack_done = attack_to_coord(nx,ny)
+        if not (is_attack_done) and unit.unit_type == 'A' :
+            nx, ny = nx + dx, ny + dy
+            attack_to_coord(nx,ny)
+
