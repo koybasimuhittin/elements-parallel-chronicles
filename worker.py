@@ -2,16 +2,19 @@ from block import Block
 from mpi4py import MPI
 import utils
 import unit
+import time
 
 from constants import MESSAGES
 
 comm = MPI.COMM_WORLD
+worker_count = comm.Get_size() - 1
+sqr_of_worker_count = worker_count ** 0.5
 
 
 # state 0: idle
 # state 1: recieve blocks
-# state 2: active
-# state 3: only send data
+# state 2: recieve boundaries
+# state 3: send boundaries
 
 class Worker:
 
@@ -30,26 +33,60 @@ class Worker:
               f"from Manager.")
         self.block = block_data
 
+    def extract_block(self, position):
+        if position == 0:
+            # Top-left 2x2 block
+            return [row[0:2] for row in self.block.grid[0:2]]
+        elif position == 1:
+            # Top 2 rows, all columns
+            return [row[:] for row in self.block.grid[0:2]]
+        elif position == 2:
+            # Top 2 rows, last 2 columns
+            return [row[-3:-1] for row in self.block.grid[0:2]]
+        elif position == 3:
+            # All rows, last 2 columns
+            return [row[-3:-1] for row in self.block.grid]
+        elif position == 4:
+            # Bottom 2 rows, last 2 columns
+            return [row[-3:-1] for row in self.block.grid[-3:-1]]
+        elif position == 5:
+            # Bottom 2 rows, all columns
+            return [row[:] for row in self.block.grid[-3:-1]]
+        elif position == 6:
+            # Bottom 2 rows, first 2 columns
+            return [row[0:2] for row in self.block.grid[-3:-1]]
+        elif position == 7:
+            # All rows, first 2 columns
+            return [row[0:2] for row in self.block.grid]
+        
+
     def run(self):
         """
         Main method to run the worker process.
         """
         while True:
-            self.state = comm.irecv(source=0, tag=10).wait()
-            print(f"Worker {self.rank}: Received state {self.state}.")
+            data = comm.recv(source=0, tag=10)
+            self.state = data['state']
             if self.state == 1:
-                print(f"Worker {self.rank}: Ready to receive blocks.")
                 self.receive_block()
-                print(f"Worker {self.rank}: Finished processing.")
                 comm.send(MESSAGES['BLOCKS_RECEIVED']['message'], dest=MESSAGES['BLOCKS_RECEIVED']['dest'],
                           tag=MESSAGES['BLOCKS_RECEIVED']['tag'])
                 self.state = 0
             elif self.state == 2:
-                print(f"Worker {self.rank}: Active.")
+                print(f"Worker {self.rank}: Receiving boundaries.")
+                for neighbor in self.block.adjacent_blocks:
+                    data = comm.recv(source=neighbor['block_id'], tag=10)
+                    print(f"Worker {self.rank}: Received boundary data from Worker {neighbor['block_id']}. Data: {data}")
 
+                comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'], dest=MESSAGES['ACTIVE_TIME_DONE']['dest'],
+                          tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])    
                 self.state = 0
             elif self.state == 3:
-                print(f"Worker {self.rank}: Only send data.")
+                print(f"Worker {self.rank}: Sending boundaries.")
+                for neighbor in self.block.adjacent_blocks:
+                    if utils.is_current_worker(neighbor['block_id'], data['current_worker_group']):
+                        print(f"Worker {self.rank}: Sending block to Worker {neighbor['block_id']}.")
+                        comm.send(self.extract_block(neighbor['position']), dest=neighbor['block_id'], tag=10)
                 self.state = 0
             elif self.state == 4: # attack phase one of the 4 groups attacks
                 for i in range(len(self.block)):

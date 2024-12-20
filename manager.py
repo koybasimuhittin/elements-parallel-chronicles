@@ -58,11 +58,17 @@ class Manager:
     def calculate_adjacent_blocks(self, block_ids, blocks):
         for i in range(len(block_ids)):
             for j in range(len(block_ids[i])):
-                adjacent_blocks = []
-                for x in range(i-1, i+2):
-                    for y in range(j-1, j+2):
-                        if 0 <= x < len(block_ids) and 0 <= y < len(block_ids[i]) and (x, y) != (i, j):
-                            adjacent_blocks.append(block_ids[x][y])
+                adjacent_blocks = []                
+                # from top-left to left clockwise [0, 1, 2]
+                #                                 [7, x, 3]
+                #                                 [6, 5, 4]
+                dx = [-1, 0, 1, 1, 1, 0, -1, -1]
+                dy = [-1, -1, -1, 0, 1, 1, 1, 0]  
+                for k in range(8):
+                    x = i + dx[k]
+                    y = j + dy[k]
+                    if 0 <= x < len(block_ids) and 0 <= y < len(block_ids[i]) and (x, y) != (i, j):
+                        adjacent_blocks.append({'block_id': block_ids[x][y], 'position': k, 'relative_position': (dx[k], dy[k])})
                 blocks[block_ids[i][j] - 1].adjacent_blocks = adjacent_blocks
 
 
@@ -72,7 +78,7 @@ class Manager:
 
     def send_blocks(self):
         for i in range(len(self.blocks)):
-                comm.send(1, dest=self.blocks[i].id, tag=10)
+                comm.send({'state': 1}, dest=self.blocks[i].id, tag=10)
                 comm.send(self.blocks[i], dest=self.blocks[i].id, tag=1)
 
     def set_current_workers(self, x, y):
@@ -81,10 +87,10 @@ class Manager:
         for i in range(sqr_of_worker):
             for j in range(sqr_of_worker):
                 if(i % 2 == x and j % 2 == y):
-                    comm.send(2, dest=i * sqr_of_worker + j + 1, tag=10)
+                    comm.send({'state': 2, 'current_worker_group': 2 * x + y}, dest=i * sqr_of_worker + j + 1, tag=10)
                     current_workers[i * sqr_of_worker + j] = True
                 else:
-                    comm.send(3, dest=i * sqr_of_worker + j + 1, tag=10)
+                    comm.send({'state': 3, 'current_worker_group': 2 * x + y}, dest=i * sqr_of_worker + j + 1, tag=10)
 
         return current_workers
 

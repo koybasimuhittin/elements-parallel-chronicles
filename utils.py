@@ -1,35 +1,46 @@
+from mpi4py import MPI
+
 global N, W, T, R
 
+comm = MPI.COMM_WORLD
+
+worker_count = comm.Get_size() - 1
+sqr_of_worker_count = (int)(worker_count ** 0.5)
+
 def calculate_block_sizes(n, worker_count):
-    sqr_of_worker = int(worker_count ** 0.5)
-    initial_block_size = n // sqr_of_worker
-    remaning_size = n % sqr_of_worker
+    initial_block_size = n // sqr_of_worker_count
+    remaning_size = n % sqr_of_worker_count
     block_sizes = []
-    for i in range(sqr_of_worker):
+    for i in range(sqr_of_worker_count):
         block_sizes.append([])
-        for j in range(sqr_of_worker):
+        for j in range(sqr_of_worker_count):
             block_sizes[i].append((initial_block_size + (j < remaning_size), initial_block_size + (i < remaning_size)))
     
     return block_sizes
 
 def coordinates_to_block_id(x, y, n, worker_count):
-    sqr_of_worker = int(worker_count ** 0.5)
-    block_size = n // sqr_of_worker
-    remaning_size = n % sqr_of_worker
+    block_size = n // sqr_of_worker_count
+    remaning_size = n % sqr_of_worker_count
 
     if(x > remaning_size * (block_size + 1)):
         x -= remaning_size
         if(y > remaning_size * (block_size + 1)):
             y -= remaning_size
-            return (x // (block_size)) + y // (block_size) * sqr_of_worker + 1    
+            return (x // (block_size)) + y // (block_size) * sqr_of_worker_count + 1    
         else:
-            return (x // (block_size)) + y // (block_size + 1) * sqr_of_worker + 1
+            return (x // (block_size)) + y // (block_size + 1) * sqr_of_worker_count + 1
     else:
         if(y > remaning_size * (block_size + 1)):
             y -= remaning_size
-            return (x // (block_size + 1)) + y // (block_size) * sqr_of_worker + 1
+            return (x // (block_size + 1)) + y // (block_size) * sqr_of_worker_count + 1
         else:
-            return (x // (block_size + 1)) + y // (block_size + 1) * sqr_of_worker + 1 
+            return (x // (block_size + 1)) + y // (block_size + 1) * sqr_of_worker_count + 1 
+        
+def is_current_worker(worker_id, current_worker_group):
+    worker_id -= 1
+    x = worker_id // sqr_of_worker_count
+    y = worker_id % sqr_of_worker_count
+    return x % 2 == current_worker_group // 2 and y % 2 == current_worker_group % 2
     
 
 def parse_general_info(lines):

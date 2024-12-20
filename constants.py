@@ -5,6 +5,6 @@ AIR = {'HEALTH': 10, 'ATTACK': 2, 'HEALING': 2}
 
 MESSAGES = {
     'BLOCKS_RECEIVED': {'message': True, 'tag': 1, 'dest': 0},
-    'ACTIVE_TIME_DONE': {'message': True, 'tag': 2, 'dest': 0},
+    'ACTIVE_TIME_DONE': {'message': True, 'tag': 2, 'dest': 0}
 }
 
