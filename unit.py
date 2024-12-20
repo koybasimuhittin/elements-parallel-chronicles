@@ -28,6 +28,9 @@ class Unit:
         """
         self.attack_targets.clear()
 
+    def __str__(self):
+        return self.unit_type
+
 
 class EarthUnit(Unit):
     """
@@ -75,6 +78,7 @@ class FireUnit(Unit):
         self.health = min(12, self.health + self.healing_rate)
 
 
+
 class WaterUnit(Unit):
     """
     Water unit class with specific attributes and abilities.
@@ -108,5 +112,6 @@ class WaterUnit(Unit):
 
     def heal(self):
         self.health = min(14, self.health + self.healing_rate)
+
 
 

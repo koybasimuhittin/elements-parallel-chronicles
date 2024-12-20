@@ -52,6 +52,9 @@ class Manager:
             for coord in wave[faction]:
                 id = utils.coordinates_to_block_id(coord[0], coord[1], n, self.worker_count)
                 blocks[id - 1].units[faction].append(coord)
+
+        for i in range(len(blocks)):
+            blocks[i].fill_grid()
             
         return blocks, block_ids
         

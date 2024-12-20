@@ -10,6 +10,15 @@ comm = MPI.COMM_WORLD
 worker_count = comm.Get_size() - 1
 sqr_of_worker_count = worker_count ** 0.5
 
+def print_grid(grid):
+    string = ""
+    for row in grid:
+        row_str = ""
+        for cell in row:
+            row_str += str(cell) + ""
+        string += "".join(row_str) + "\n"   
+    return string
+
 
 # state 0: idle
 # state 1: recieve blocks
@@ -36,28 +45,28 @@ class Worker:
     def extract_block(self, position):
         if position == 0:
             # Top-left 2x2 block
-            return [row[0:2] for row in self.block.grid[0:2]]
+            return [row[0:3] for row in self.block.grid[0:3]]
         elif position == 1:
             # Top 2 rows, all columns
-            return [row[:] for row in self.block.grid[0:2]]
+            return [row[:] for row in self.block.grid[0:3]]
         elif position == 2:
             # Top 2 rows, last 2 columns
-            return [row[-3:-1] for row in self.block.grid[0:2]]
+            return [row[-3:] for row in self.block.grid[0:3]]
         elif position == 3:
             # All rows, last 2 columns
-            return [row[-3:-1] for row in self.block.grid]
+            return [row[-3:] for row in self.block.grid]
         elif position == 4:
             # Bottom 2 rows, last 2 columns
-            return [row[-3:-1] for row in self.block.grid[-3:-1]]
+            return [row[-3:] for row in self.block.grid[-3:]]
         elif position == 5:
             # Bottom 2 rows, all columns
-            return [row[:] for row in self.block.grid[-3:-1]]
+            return [row[:] for row in self.block.grid[-3:]]
         elif position == 6:
             # Bottom 2 rows, first 2 columns
-            return [row[0:2] for row in self.block.grid[-3:-1]]
+            return [row[0:3] for row in self.block.grid[-3:]]
         elif position == 7:
             # All rows, first 2 columns
-            return [row[0:2] for row in self.block.grid]
+            return [row[0:3] for row in self.block.grid]
         
 
     def run(self):
@@ -76,7 +85,7 @@ class Worker:
                 print(f"Worker {self.rank}: Receiving boundaries.")
                 for neighbor in self.block.adjacent_blocks:
                     data = comm.recv(source=neighbor['block_id'], tag=10)
-                    print(f"Worker {self.rank}: Received boundary data from Worker {neighbor['block_id']}. Data: {data}")
+                    print(f"Worker {self.rank}: Received boundary data from Worker {neighbor['block_id']}. Data: \n{print_grid(data)}")
 
                 comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'], dest=MESSAGES['ACTIVE_TIME_DONE']['dest'],
                           tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])    
@@ -101,11 +110,21 @@ class Worker:
                     for j in range(len(self.block[0])):
                         if self.block[i][j] != '.':
                             unit = self.block[i][j]
-                            if unit.health - unit.damage_taken <=0: # unit is dead !!!! add inferno ability
+                            if unit.unit_type == 'E':
+                                unit.health -= unit.fortify()
+                            unit.health -= unit.damage_taken
+                            unit.damage_taken = 0
+                            if not unit.is_alive():  # unit is dead !!!! add inferno ability
                                 self.block[i][j] = '.'
-                            else:
-                                unit.health -= unit.damage_taken
-                                unit.damage_taken = 0
+
+            elif self.state == 8:
+                for i in range(len(self.block)):
+                    for j in range(len(self.block[0])):
+                        if self.block[i][j] != '.':
+                            unit = self.block[i][j]
+                            if not unit.attack_done:
+                                unit.heal()
+                            unit.attack_done = False
 
 
 
@@ -175,7 +194,7 @@ def take_damage(self):
         if not (enemy.unit_type == "." or enemy.unit_type == unit_type):
             comm.send(False, dest=rank, tag=70)
         else:
-            unit.damage_taken += damage
+            enemy.damage_taken += damage
             comm.send(True, dest=rank, tag=70)
 
 

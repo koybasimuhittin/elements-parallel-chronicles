@@ -14,12 +14,16 @@ class Block:
     def fill_grid(self):
         for faction in self.units:
             for unit in self.units[faction]:
+                coords = self.get_block_coordinates(unit[0], unit[1])
                 if faction == "E":
-                    self.grid[unit[0]][unit[1]] = EarthUnit(unit[0], unit[1])
+                    self.grid[coords[0]][coords[1]] = EarthUnit(unit[0], unit[1])
                 elif faction == "F":
-                    self.grid[unit[0]][unit[1]] = FireUnit(unit[0], unit[1])
+                    self.grid[coords[0]][coords[1]] = FireUnit(unit[0], unit[1])
                 elif faction == "W":
-                    self.grid[unit[0]][unit[1]] = WaterUnit(unit[0], unit[1])
+                    self.grid[coords[0]][coords[1]] = WaterUnit(unit[0], unit[1])
+
+    def get_block_coordinates(self, x, y):
+        return (x - self.top_left[0], y - self.top_left[1])
 
     def get_grid_coordinate(self, x, y):
         return (x + self.top_left[0], y + self.top_left[1])
