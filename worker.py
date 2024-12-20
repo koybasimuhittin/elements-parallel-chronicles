@@ -2,7 +2,6 @@ from block import Block
 from mpi4py import MPI
 import utils
 import unit
-import time
 
 from constants import MESSAGES
 
@@ -13,8 +12,8 @@ sqr_of_worker_count = worker_count ** 0.5
 
 # state 0: idle
 # state 1: recieve blocks
-# state 2: recieve boundaries
-# state 3: send boundaries
+# state 2: active
+# state 3: only send data
 
 class Worker:
 
@@ -58,35 +57,30 @@ class Worker:
         elif position == 7:
             # All rows, first 2 columns
             return [row[0:2] for row in self.block.grid]
-        
+
 
     def run(self):
         """
         Main method to run the worker process.
         """
         while True:
-            data = comm.recv(source=0, tag=10)
-            self.state = data['state']
+            self.state = comm.irecv(source=0, tag=10).wait()
+            print(f"Worker {self.rank}: Received state {self.state}.")
             if self.state == 1:
+                print(f"Worker {self.rank}: Ready to receive blocks.")
                 self.receive_block()
+                print(f"Worker {self.rank}: Finished processing.")
                 comm.send(MESSAGES['BLOCKS_RECEIVED']['message'], dest=MESSAGES['BLOCKS_RECEIVED']['dest'],
                           tag=MESSAGES['BLOCKS_RECEIVED']['tag'])
                 self.state = 0
             elif self.state == 2:
-                print(f"Worker {self.rank}: Receiving boundaries.")
-                for neighbor in self.block.adjacent_blocks:
-                    data = comm.recv(source=neighbor['block_id'], tag=10)
-                    print(f"Worker {self.rank}: Received boundary data from Worker {neighbor['block_id']}. Data: {data}")
+                print(f"Worker {self.rank}: Active.")
 
                 comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'], dest=MESSAGES['ACTIVE_TIME_DONE']['dest'],
-                          tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])    
+                          tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])
                 self.state = 0
             elif self.state == 3:
-                print(f"Worker {self.rank}: Sending boundaries.")
-                for neighbor in self.block.adjacent_blocks:
-                    if utils.is_current_worker(neighbor['block_id'], data['current_worker_group']):
-                        print(f"Worker {self.rank}: Sending block to Worker {neighbor['block_id']}.")
-                        comm.send(self.extract_block(neighbor['position']), dest=neighbor['block_id'], tag=10)
+                print(f"Worker {self.rank}: Only send data.")
                 self.state = 0
             elif self.state == 4: # attack phase one of the 4 groups attacks
                 for i in range(len(self.block)):
@@ -101,11 +95,20 @@ class Worker:
                     for j in range(len(self.block[0])):
                         if self.block[i][j] != '.':
                             unit = self.block[i][j]
-                            if unit.health - unit.damage_taken <=0: # unit is dead !!!! add inferno ability
+                            if unit.unit_type == 'E':
+                                unit.health -= unit.fortify()
+                            unit.health -= unit.damage_taken
+                            unit.damage_taken = 0
+                            if not unit.is_alive():  # unit is dead !!!! add inferno ability
                                 self.block[i][j] = '.'
-                            else:
-                                unit.health -= unit.damage_taken
-                                unit.damage_taken = 0
+            elif self.state == 8:
+                for i in range(len(self.block)):
+                    for j in range(len(self.block[0])):
+                        if self.block[i][j] != '.':
+                            unit = self.block[i][j]
+                            if not unit.attack_done:
+                                unit.heal()
+                            unit.attack_done = False
 
 
 
@@ -175,7 +178,7 @@ def take_damage(self):
         if not (enemy.unit_type == "." or enemy.unit_type == unit_type):
             comm.send(False, dest=rank, tag=70)
         else:
-            unit.damage_taken += damage
+            enemy.damage_taken += damage
             comm.send(True, dest=rank, tag=70)
 
 
@@ -183,7 +186,8 @@ def attack(self, unit): # !!!!!! add air attack
     """
     Determine targets in the attack pattern and deal damage.
     """
-
+    if unit.health < unit.max_health:# prioritize healing
+        return
     for dx, dy in unit.directions:
         nx, ny = unit.x + dx, unit.y + dy
         if 0 <= nx < utils.N and 0 <= ny < utils.N:
