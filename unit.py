@@ -6,7 +6,7 @@ class Unit:
     """
 
     def __init__(self, unit_type, x, y, max_health, attack_power, healing_rate):
-        self.unit_type = unit_type  # Unit type: E, F, W, A, .
+        self.unit_type = unit_type  # Unit type: E, F, W, A .
         self.x = x  # X-coordinate
         self.y = y  # Y-coordinate
         self.max_health = max_health  # Maximum health points
@@ -15,6 +15,7 @@ class Unit:
         self.healing_rate = healing_rate  # Healing rate when not attacking
         self.attack_targets = []  # List of targets for the current round
         self.damage_taken=0
+        self.attack_done=False
 
     def is_alive(self):
         """
@@ -36,7 +37,7 @@ class EarthUnit(Unit):
 
     def __init__(self, x, y):
         super().__init__(unit_type="E", x=x, y=y, max_health=18, attack_power=2, healing_rate=3)
-        directions = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+        self.directions = [(0, -1), (0, 1), (-1, 0), (1, 0)]
 
     def fortify(self, incoming_damage):
         """
@@ -59,6 +60,7 @@ class FireUnit(Unit):
         self.base_attack_power = 4
         self.attack_power = self.base_attack_power
         self.inferno_triggered = False
+        self.directions= [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
 
     def inferno(self):
         if not self.inferno_triggered and self.attack_power < 6:
@@ -81,6 +83,7 @@ class WaterUnit(Unit):
 
     def __init__(self, x, y):
         super().__init__(unit_type="W", x=x, y=y, max_health=14, attack_power=3, healing_rate=2)
+        self.directions= [(-1, -1), (1, 1), (-1, 1), (1, -1)]
 
     def flood(self, battlefield):
         neutral_cells = []

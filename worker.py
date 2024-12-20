@@ -1,6 +1,7 @@
 from block import Block
 from mpi4py import MPI
 import utils
+import unit
 
 from constants import MESSAGES
 
@@ -36,22 +37,28 @@ class Worker:
         while True:
             self.state = comm.irecv(source=0, tag=10).wait()
             print(f"Worker {self.rank}: Received state {self.state}.")
-            if (self.state == 1):
+            if self.state == 1:
                 print(f"Worker {self.rank}: Ready to receive blocks.")
                 self.receive_block()
                 print(f"Worker {self.rank}: Finished processing.")
                 comm.send(MESSAGES['BLOCKS_RECEIVED']['message'], dest=MESSAGES['BLOCKS_RECEIVED']['dest'],
                           tag=MESSAGES['BLOCKS_RECEIVED']['tag'])
                 self.state = 0
-            elif (self.state == 2):
+            elif self.state == 2:
                 print(f"Worker {self.rank}: Active.")
 
-
-
                 self.state = 0
-            elif (self.state == 3):
+            elif self.state == 3:
                 print(f"Worker {self.rank}: Only send data.")
                 self.state = 0
+            elif self.state == 4: # attack phase
+                for i in range(len(self.block)):
+                    for j in range(len(self.block[0])):
+                        if self.block[i][j] != '.':
+                            attack(self, self.block[i][j])
+            elif self.state == 5:
+                take_damage(self)
+
             else:
                 pass
 
@@ -68,11 +75,11 @@ def send_data(self):
         self.state = -1
         pass
     coord, rank = a[0], a[1]
-    data = self.block.get_grid_element(coord[0],coord[1])
+    data = self.block.get_grid_element(coord[0], coord[1])
     comm.send(data, dest=rank, tag=69)
 
 
-
+"""
 def run2(self):
     while True:
         self.state = comm.recv(source=0, tag=10)
@@ -96,31 +103,45 @@ def run2(self):
                 print("asdas")
             comm.send("END", dest=0, tag=0)
             comm.recv(source=MPI.ANY_SOURCE, tag=3)
+"""
 
-    def apply_damage(self, coordinates, attack_power):
-        destination = utils.coordinates_to_block_id(coordinates[0], coordinates[1], utils.N, comm.Get_size() - 1)
-        comm.send([coordinates, attack_power], dest=destination, tag=70)
 
-    def take_damage(self):
+def apply_damage(self, coordinates, unit):
+    destination = utils.coordinates_to_block_id(coordinates[0], coordinates[1], utils.N, comm.Get_size() - 1)
+    comm.send([coordinates, unit.attack_power, unit.unit_type, self.rank], dest=destination, tag=70)
+    is_attack_successful = comm.recv(source=destination, tag=70)
+    return is_attack_successful
+
+
+def take_damage(self):
+    while True:
         data = comm.recv(source=MPI.ANY_SOURCE, tag=70)
         if data is None:
             self.state = 0
-            pass
-        coord, damage = data[0], data[1]
-        unit = self.block.get_grid_element(coord[0], coord[1])
-        unit.damage_taken+=damage
+            return
+        coord, damage, unit_type, rank = data[0], data[1], data[2], data[3]
+        enemy = self.block.get_grid_element(coord[0], coord[1])
+        if not (enemy.unit_type == "." or enemy.unit_type == unit_type):
+            comm.send(False, dest=rank, tag=70)
+        else:
+            unit.damage_taken += damage
+            comm.send(True, dest=rank, tag=70)
 
-    def attack(self, unit):
-        """
-        Determine targets in the attack pattern and deal damage.
-        """
 
-        for dx, dy in unit.directions:
-            nx, ny = self.x + dx, self.y + dy
-            if 0 <= nx < utils.N and 0 <= ny < utils.N:
-                if self.block.is_coordinate_inside(nx, ny):
-                    enemy = self.block.get_grid_element(nx, ny)
-                    if enemy.unit_type == "." and enemy.unit_type == unit.unit_type:
-                        enemy.damage_taken += self.attack_power
-                else:
-                    self.apply_damage(self, (nx, ny), unit.attack_power)
+def attack(self, unit):
+    """
+    Determine targets in the attack pattern and deal damage.
+    """
+
+    for dx, dy in unit.directions:
+        nx, ny = unit.x + dx, unit.y + dy
+        if 0 <= nx < utils.N and 0 <= ny < utils.N:
+            if self.block.is_coordinate_inside(nx, ny):
+                enemy = self.block.get_grid_element(nx, ny)
+                if not (enemy.unit_type == "." or enemy.unit_type == unit.unit_type):
+                    enemy.damage_taken += self.attack_power
+                    unit.attack_done = True
+            else:
+                is_attack_successful = self.apply_damage(self, (nx, ny), unit.attack_power)
+                if is_attack_successful:
+                    unit.attack_done = True
