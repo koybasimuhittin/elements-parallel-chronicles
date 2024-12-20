@@ -13,7 +13,6 @@ class Unit:
         self.health = max_health  # Current health points
         self.attack_power = attack_power  # Attack damage
         self.healing_rate = healing_rate  # Healing rate when not attacking
-        self.attack_targets = []  # List of targets for the current round
         self.damage_taken=0
         self.attack_done=False
 

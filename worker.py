@@ -51,13 +51,27 @@ class Worker:
             elif self.state == 3:
                 print(f"Worker {self.rank}: Only send data.")
                 self.state = 0
-            elif self.state == 4: # attack phase
+            elif self.state == 4: # attack phase one of the 4 groups attacks
                 for i in range(len(self.block)):
                     for j in range(len(self.block[0])):
                         if self.block[i][j] != '.':
                             attack(self, self.block[i][j])
-            elif self.state == 5:
+            elif self.state == 5: # other 3 takes the damages
                 take_damage(self)
+
+            elif self.state == 6: # resolution phase
+                for i in range(len(self.block)):
+                    for j in range(len(self.block[0])):
+                        if self.block[i][j] != '.':
+                            unit = self.block[i][j]
+                            if unit.health - unit.damage_taken <=0: # unit is dead !!!! add inferno ability
+                                self.block[i][j] = '.'
+                            else:
+                                unit.health -= unit.damage_taken
+                                unit.damage_taken = 0
+
+
+
 
             else:
                 pass
@@ -128,7 +142,7 @@ def take_damage(self):
             comm.send(True, dest=rank, tag=70)
 
 
-def attack(self, unit):
+def attack(self, unit): # !!!!!! add air attack
     """
     Determine targets in the attack pattern and deal damage.
     """
