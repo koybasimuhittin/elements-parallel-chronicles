@@ -23,7 +23,7 @@ class Unit:
         return self.health > 0
 
     def __str__(self):
-        return self.unit_type
+        return ((str)(self.unit_type) + (str)(self.health))
 
 
 class EarthUnit(Unit):

@@ -1,30 +1,24 @@
-from block import Block
 from mpi4py import MPI
-import utils
+from utils import Utils  # <-- Import the entire Utils class
+from block import Block
 from unit import Unit, EarthUnit, FireUnit, WaterUnit, AirUnit
 import time
-
 from constants import MESSAGES
 
 comm = MPI.COMM_WORLD
-worker_count = comm.Get_size() - 1
-sqr_of_worker_count = worker_count ** 0.5
-
 
 def print_grid(grid):
+    """
+    Helper function to convert a 2D grid into a string for debugging.
+    """
     string = ""
     for row in grid:
         row_str = ""
         for cell in row:
-            row_str += str(cell) + ""
-        string += "".join(row_str) + "\n"
+            row_str += str(cell)
+        string += row_str + "\n"
     return string
 
-
-# state 0: idle
-# state 1: recieve blocks
-# state 2: recieve boundaries
-# state 3: send boundaries
 
 class Worker:
 
@@ -35,201 +29,238 @@ class Worker:
 
     def receive_block(self):
         """
-        Receive blocks from the manager (rank 0).
+        Receive block data from the Manager (rank 0).
         """
-
         block_data = comm.recv(source=0, tag=1)
-        print(f"Worker {self.rank}: Received block with ID {block_data.id} "
-              f"from Manager.")
+        print(f"Worker {self.rank}: Received block with ID {block_data.id} from Manager.")
         self.block: Block = block_data
 
     def extract_block(self, position):
+        """
+        Extracts specific 'boundary' sub-grids to send to neighbors.
+        Each position corresponds to a direction around the block:
+          0 -> top-left corner, 1 -> top edge, 2 -> top-right corner, etc.
+        """
+        # Example extraction size is 3x3, but can be adjusted as needed
         if position == 0:
-            # Top-left 2x2 block
             return [row[0:3] for row in self.block.grid[0:3]]
         elif position == 1:
-            # Top 2 rows, all columns
             return [row[:] for row in self.block.grid[0:3]]
         elif position == 2:
-            # Top 2 rows, last 2 columns
             return [row[-3:] for row in self.block.grid[0:3]]
         elif position == 3:
-            # All rows, last 2 columns
             return [row[-3:] for row in self.block.grid]
         elif position == 4:
-            # Bottom 2 rows, last 2 columns
             return [row[-3:] for row in self.block.grid[-3:]]
         elif position == 5:
-            # Bottom 2 rows, all columns
             return [row[:] for row in self.block.grid[-3:]]
         elif position == 6:
-            # Bottom 2 rows, first 2 columns
             return [row[0:3] for row in self.block.grid[-3:]]
         elif position == 7:
-            # All rows, first 2 columns
             return [row[0:3] for row in self.block.grid]
+        # Default empty if position is somehow out of range
+        return []
 
     def run(self):
         """
-        Main method to run the worker process.
+        Main loop for the worker process.
         """
+
+        config_data = comm.bcast(None, root=0)
+        # Update Utils class variables
+        Utils.N = config_data['N']
+        Utils.W = config_data['W']
+        Utils.T = config_data['T']
+        Utils.R = config_data['R']
+
         while True:
+            # Receive control/state info from Manager (rank=0)
             data = comm.recv(source=0, tag=10)
             self.state = data['state']
+
+            # 1) Receive blocks from manager
             if self.state == 1:
                 self.receive_block()
-                comm.send(MESSAGES['BLOCKS_RECEIVED']['message'], dest=MESSAGES['BLOCKS_RECEIVED']['dest'],
+                comm.send(MESSAGES['BLOCKS_RECEIVED']['message'],
+                          dest=MESSAGES['BLOCKS_RECEIVED']['dest'],
                           tag=MESSAGES['BLOCKS_RECEIVED']['tag'])
                 self.state = 0
 
+            # 2) Worker becomes "receiver" of boundary data
             elif self.state == 2:
                 print(f"Worker {self.rank}: Receiving boundaries.")
                 for neighbor in self.block.adjacent_blocks:
-                    data = comm.recv(source=neighbor['block_id'], tag=10)
-                    print(
-                        f"Worker {self.rank}: Received boundary data from Worker {neighbor['block_id']}. Data: \n{print_grid(data)}")
+                    boundary_data = comm.recv(source=neighbor['block_id'], tag=10)
+                    print(f"Worker {self.rank}: Received boundary from Worker {neighbor['block_id']}.")
+                    print(print_grid(boundary_data))
 
-                comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'], dest=MESSAGES['ACTIVE_TIME_DONE']['dest'],
+                comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'],
+                          dest=MESSAGES['ACTIVE_TIME_DONE']['dest'],
                           tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])
                 self.state = 0
 
+            # 3) Worker becomes "sender" of boundary data
             elif self.state == 3:
                 print(f"Worker {self.rank}: Sending boundaries.")
+                current_group = data['current_worker_group']
                 for neighbor in self.block.adjacent_blocks:
-                    if utils.is_current_worker(neighbor['block_id'], data['current_worker_group']):
-                        print(f"Worker {self.rank}: Sending block to Worker {neighbor['block_id']}.")
-                        comm.send(self.extract_block(neighbor['position']), dest=neighbor['block_id'], tag=10)
+                    # Only send to neighbors that are also in the active checkerboard group
+                    if Utils.is_current_worker(neighbor['block_id'], current_group):
+                        print(f"Worker {self.rank}: Sending boundary to Worker {neighbor['block_id']}.")
+                        comm.send(self.extract_block(neighbor['position']),
+                                  dest=neighbor['block_id'], tag=10)
                 self.state = 0
 
-            elif self.state == 4:  # attack phase one of the 4 groups attacks
+            # 4) Attack Phase
+            elif self.state == 4:
+                print(f"Worker {self.rank}: Attacking.")
                 for i in range(len(self.block.grid)):
                     for j in range(len(self.block.grid[0])):
                         if self.block.grid[i][j] != '.':
-                            self.attack( self.block.grid[i][j])
-
-                comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'], dest=MESSAGES['ACTIVE_TIME_DONE']['dest'],
+                            self.attack(self.block.grid[i][j])
+                comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'],
+                          dest=MESSAGES['ACTIVE_TIME_DONE']['dest'],
                           tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])
                 self.state = 0
 
-            elif self.state == 5:  # other 3 takes the damages
+            # 5) Take Damage Phase
+            elif self.state == 5:
+                print(f"Worker {self.rank}: Taking damage.")
                 self.take_damage()
                 self.state = 0
 
-            elif self.state == 6:  # resolution phase
+            # 6) Resolution Phase
+            elif self.state == 6:
                 for i in range(len(self.block.grid)):
                     for j in range(len(self.block.grid[0])):
                         if self.block.grid[i][j] != '.':
                             unit: Unit = self.block.grid[i][j]
+                            # Example: Earth units may fortify
                             if unit.unit_type == 'E':
                                 unit: EarthUnit
                                 unit.fortify()
 
+                            # Apply accumulated damage
                             unit.health -= unit.damage_taken
                             unit.damage_taken = 0
 
-                            if not unit.is_alive():  # unit is dead !!!! TODO: add inferno ability
-                                self.block[i][j] = '.'
+                            # Kill unit if health <= 0
+                            if not unit.is_alive():
+                                self.block.grid[i][j] = '.'
+                self.state = 0
 
-            elif self.state == 8:  # heal phase
+            # 8) Heal Phase
+            elif self.state == 8:
                 for i in range(len(self.block.grid)):
                     for j in range(len(self.block.grid[0])):
                         if self.block.grid[i][j] != '.':
                             unit = self.block.grid[i][j]
+                            # If the unit hasn't attacked yet, it can heal
                             if not unit.attack_done:
                                 unit.heal()
+                            # Reset its attack state
                             unit.attack_done = False
+                self.state = 0
 
-
-
-
+            # Anything else or termination
             else:
-                pass
+                print(f"Worker {self.rank}: Idle or shutting down.")
+                # Send block back to manager (for final collection)
+                comm.send(self.block, dest=0, tag=10)
+                break
 
-    def apply_damage(self, coordinates, unit: Unit | EarthUnit | FireUnit | WaterUnit | AirUnit):
-        destination = utils.coordinates_to_block_id(coordinates[0], coordinates[1], utils.N, worker_count)
-        comm.send([coordinates, unit.attack_power, unit.unit_type, self.rank], dest=destination, tag=70)
-        is_attack_successful = comm.recv(source=destination, tag=70)
-        return is_attack_successful
+    def apply_damage(self, coordinates, unit: Unit):
+        """
+        Send an attack to another block's worker to see if it lands.
+        Returns True if the attack was successful, False otherwise.
+        """
+        dest_block_id = Utils.coordinates_to_block_id(
+            coordinates[0], coordinates[1], Utils.N, Utils.worker_count
+        )
+        comm.send([coordinates, unit.attack_power, unit.unit_type, self.rank],
+                  dest=dest_block_id, tag=70)
+        # Wait for confirmation (True = damage applied, False = blocked)
+        success = comm.recv(source=dest_block_id, tag=70)
+        return success
 
     def take_damage(self):
+        """
+        Wait for incoming attack messages (tag=70).
+        - If we receive None, it means no more attacks are pending.
+        - Otherwise, apply damage to the local unit if it’s a valid target.
+        """
         while True:
             data = comm.recv(source=MPI.ANY_SOURCE, tag=70)
             if data is None:
+                # No more attack messages
                 self.state = 0
                 return
-            coord, damage, unit_type, rank = data[0], data[1], data[2], data[3]
-            enemy: Unit = self.block.get_grid_element(coord[0], coord[1])
-            if not (enemy == "." or enemy.unit_type == unit_type):
-                comm.send(False, dest=rank, tag=70)
+
+            coord, damage, enemy_type, attacker_rank = data
+            local_unit = self.block.get_grid_element(coord[0], coord[1])
+            # If the cell is empty or matches the enemy's faction, it's a valid target
+            if (local_unit == "." or local_unit.unit_type == enemy_type):
+                # Attack is blocked (friendly or invalid target)
+                comm.send(False, dest=attacker_rank, tag=70)
             else:
-                enemy.damage_taken += damage
-                comm.send(True, dest=rank, tag=70)
+                # Apply damage
+                local_unit.damage_taken += damage
+                comm.send(True, dest=attacker_rank, tag=70)
 
-    def attack(self, unit: Unit | EarthUnit | FireUnit | WaterUnit | AirUnit):
+    def attack(self, unit: Unit):
         """
-        Determine targets in the attack pattern and deal damage.
+        Handle the logic of a single unit attacking its potential targets.
+        For example, each unit might have 'directions' indicating adjacent cells.
+        If it's an Air unit, it may have extended range, etc.
         """
-
-        def attack_to_coord(x, y):
-            if 0 <= x < utils.N and 0 <= y < utils.N:
+        def attack_coord(x, y):
+            # If within the global grid
+            if 0 <= x < Utils.N and 0 <= y < Utils.N:
+                print(f"Worker {self.rank}: {unit.unit_type} at ({unit.x}, {unit.y}) attacking ({x}, {y}).")
+                # If target cell is in the same block:
                 if self.block.is_coordinate_inside(x, y):
-                    enemy: Unit = self.block.get_grid_element(x, y)
-                    if not (enemy == "." or enemy.unit_type == unit.unit_type):
-                        enemy.damage_taken += unit.attack_power
+                    local_unit = self.block.get_grid_element(x, y)
+                    # If target cell is not empty AND is a different faction
+                    if not (local_unit == "." or local_unit.unit_type == unit.unit_type):
+                        local_unit.damage_taken += unit.attack_power
                         unit.attack_done = True
                         return True
                 else:
-                    is_attack_successful = self.apply_damage((x, y), unit.attack_power)
-                    if is_attack_successful:
+                    # Otherwise, send damage to another block
+                    if self.apply_damage((x, y), unit):
                         unit.attack_done = True
                         return True
-
             return False
 
+        # Attack each direction once; if Air unit, it may continue
         for dx, dy in unit.directions:
             nx, ny = unit.x + dx, unit.y + dy
-            is_attack_done = attack_to_coord(nx, ny)
-            if not (is_attack_done) and unit.unit_type == 'A':
-                nx, ny = nx + dx, ny + dy
-                attack_to_coord(nx, ny)
+            did_attack = attack_coord(nx, ny)
+
+            # Example: Air unit can "pierce" one more cell
+            if not did_attack and unit.unit_type == 'A':
+                nx2, ny2 = nx + dx, ny + dy
+                attack_coord(nx2, ny2)
 
     def request_data(self, coordinates):
-        destination = utils.coordinates_to_block_id(coordinates[0], coordinates[1], utils.N, comm.Get_size() - 1)
-        comm.send([coordinates, self.rank], dest=destination, tag=69)
-        data = comm.recv(source=destination, tag=MPI.ANY_TAG)
+        """
+        Example of requesting data from another worker's block.
+        """
+        dest_block_id = Utils.coordinates_to_block_id(
+            coordinates[0], coordinates[1], Utils.N, Utils.worker_count
+        )
+        comm.send([coordinates, self.rank], dest=dest_block_id, tag=69)
+        data = comm.recv(source=dest_block_id, tag=MPI.ANY_TAG)
+        print(f"Worker {self.rank}: Requested data at {coordinates}, received: {data}")
 
     def send_data(self):
-        a = comm.recv(source=MPI.ANY_SOURCE, tag=69)
-        if a is None:
+        """
+        Example of providing data to a requesting worker (tag=69).
+        """
+        request = comm.recv(source=MPI.ANY_SOURCE, tag=69)
+        if request is None:
             self.state = -1
-            pass
-        coord, rank = a[0], a[1]
+            return
+        coord, requester_rank = request
         data = self.block.get_grid_element(coord[0], coord[1])
-        comm.send(data, dest=rank, tag=69)
-
-
-"""
-def run2(self):
-    while True:
-        self.state = comm.recv(source=0, tag=10)
-        if self.state == -1:
-            break
-
-        if self.state == 0:
-            while True:
-                a = comm.recv(source=MPI.ANY_SOURCE, tag=3)
-                if a is None:
-                    break
-                coord, rank = a[0], a[1]
-
-                print(self.rank)
-        elif self.state == 1:
-            comm.send([(5, 6), self.rank], dest=4, tag=3)
-            el = comm.recv(source=4, tag=4)
-            if not el is None:
-                print(el)
-            else:
-                print("asdas")
-            comm.send("END", dest=0, tag=0)
-            comm.recv(source=MPI.ANY_SOURCE, tag=3)
-"""
+        comm.send(data, dest=requester_rank, tag=69)
