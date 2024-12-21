@@ -175,6 +175,12 @@ class Worker:
                 for x,y in self.new_water_units:
                     grid_x,grid_y = self.block.get_block_coordinates(x,y)
                     self.block.grid[grid_x][grid_y] = WaterUnit(x, y)
+                for i in range(len(self.block.grid)):
+                    for j in range(len(self.block.grid[0])):
+                        if self.block.grid[i][j] != '.':
+                            fire_unit = self.block.grid[i][j]
+                            if fire_unit.unit_type == 'F':
+                                fire_unit.reset_inferno()
 
 
 

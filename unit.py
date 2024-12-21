@@ -56,17 +56,16 @@ class FireUnit(Unit):
         self.base_attack_power = 4
         self.attack_power = self.base_attack_power
         self.enemies_attacked = []
-        self.inferno_triggered = False
         self.directions = [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
 
     def inferno(self):
         if not self.inferno_triggered and self.attack_power < 6:
             self.attack_power += 1
-            self.inferno_triggered = True
             print(f"Inferno activated! Attack power increased to {self.attack_power}.")
 
     def reset_inferno(self):
-        self.inferno_triggered = False
+        self.attack_power=self.base_attack_power
+        self.enemies_attacked=[]
 
     def heal(self):
         self.health = min(12, self.health + self.healing_rate)
