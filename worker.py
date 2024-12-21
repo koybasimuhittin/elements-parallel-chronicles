@@ -27,6 +27,7 @@ class Worker:
         self.rank = rank
         self.state = 0
         self.block = None
+        self.new_water_units = set()
 
     def receive_block(self):
         """
@@ -143,7 +144,7 @@ class Worker:
                 self.state = 0
 
             # 8) Heal Phase
-            elif self.state == 8:
+            elif self.state == 7:
                 for i in range(len(self.block.grid)):
                     for j in range(len(self.block.grid[0])):
                         if self.block.grid[i][j] != '.':
@@ -154,15 +155,69 @@ class Worker:
                             # Reset its attack state
                             unit.attack_done = False
                 self.state = 0
+            elif self.state == 8:  # water floods
+                for i in range(len(self.block.grid)):
+                    for j in range(len(self.block.grid[0])):
+                        if self.block.grid[i][j] != '.':
+                            water_unit = self.block.grid[i][j]
+                            if water_unit.unit_type == 'W':
+                                self.create_water_unit(water_unit)
+            elif self.state == 9:
+                self.take_water_unit()
+                self.state = 0
 
             # Anything else or termination
             elif self.state == 10:
                 # Send block back to manager (for final collection)
                 comm.send(self.block, dest=0, tag=10)
+            elif self.state ==11: # start wave
+                for x,y in self.new_water_units:
+                    grid_x,grid_y = self.block.get_block_coordinates(x,y)
+                    self.block.grid[grid_x][grid_y] = WaterUnit(x, y)
+
+
 
             elif self.state == -1:
                 print(f"Worker {self.rank}: Terminating.")
                 break
+
+    def create_water_unit(self, water_unit: WaterUnit):
+        directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+        for dx, dy in directions:
+            nx, ny = water_unit.x + dx, water_unit.y + dy
+            if 0 <= nx < Utils.N and 0 <= ny < Utils.N:
+                if self.block.is_coordinate_inside(nx, ny):
+                    if self.block.get_grid_element(nx, ny) == '.':
+                        self.new_water_units.add((nx, ny))
+                        break
+                else:
+                    is_creation_successful = self.send_water_unit(nx, ny)
+                    if is_creation_successful:
+                        break
+
+    def send_water_unit(self, x, y):
+        dest_block_id = Utils.coordinates_to_block_id(
+            x, y, Utils.N, Utils.worker_count
+        )
+        comm.send([x, y, self.rank], dest=dest_block_id, tag=71)
+        success = comm.recv(source=dest_block_id, tag=71)
+        return success
+
+    def take_water_unit(self):
+        while True:
+            data = comm.recv(source=MPI.ANY_SOURCE, tag=71)
+            if data is None:
+                self.state = 0
+                return
+
+            x, y, sender_rank = data
+            local_unit = self.block.get_grid_element(x, y)
+            # If the cell is empty, it's a valid target
+            if local_unit == ".":
+                self.new_water_units.add((x, y))
+                comm.send(True, dest=sender_rank, tag=71)
+            else:
+                comm.send(False, dest=sender_rank, tag=71)
 
     def apply_damage(self, coordinates, unit: Unit):
         dest_block_id = Utils.coordinates_to_block_id(
