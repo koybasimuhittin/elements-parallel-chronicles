@@ -48,7 +48,7 @@ class Utils:
         return block_sizes
 
     @classmethod
-    def coordinates_to_block_id(cls, x, y, n, worker_count):
+    def coordinates_to_block_id(cls, y, x, n, worker_count):
         """
         Computes block ID given (x, y) coordinates, using the class's sqr_of_worker_count.
         """

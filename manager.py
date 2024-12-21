@@ -30,7 +30,6 @@ class Manager:
                     tuple(map(int, coord.split()))
                     for coord in re.findall(r"\d+ \d+", coordinates)
                 ]
-                coords.sort()
                 wave_data[wave_index][faction] = coords
         return wave_data
 
@@ -50,8 +49,8 @@ class Manager:
             for j in range(len(block_sizes[i])):
                 width, height = block_sizes[i][j]
                 bottom_right = (
-                    block_top_left[0] + width,
-                    block_top_left[1] + height
+                    block_top_left[0] + height,
+                    block_top_left[1] + width
                 )
                 # Create a new Block
                 blocks.append(
@@ -67,9 +66,9 @@ class Manager:
                 block_ids[i].append(block_id)
                 block_id += 1
                 # Move our top_left horizontally
-                block_top_left = (block_top_left[0] + width, block_top_left[1])
+                block_top_left = (block_top_left[0], block_top_left[1] + width)
             # After finishing row j, move top_left vertically
-            top_left = (top_left[0], top_left[1] + block_sizes[i][0][1])
+            top_left = (top_left[0] + block_sizes[i][0][1], top_left[1])
 
         # Place units in appropriate blocks
         for faction in wave:
@@ -81,6 +80,10 @@ class Manager:
         # Fill each block's internal grid
         for b in blocks:
             b.fill_grid()
+
+        for row in block_ids:
+            print(row)
+        
 
         return blocks, block_ids
         
@@ -94,11 +97,11 @@ class Manager:
                 dx = [-1,  0,  1,  1,  1,  0, -1, -1]
                 dy = [-1, -1, -1,  0,  1,  1,  1,  0]  
                 for k in range(8):
-                    x = i + dx[k]
-                    y = j + dy[k]
-                    if 0 <= x < len(block_ids) and 0 <= y < len(block_ids[i]) and (x, y) != (i, j):
+                    y = i + dy[k]
+                    x = j + dx[k]
+                    if 0 <= y < len(block_ids) and 0 <= x < len(block_ids[i]):
                         adjacent_blocks.append({
-                            'block_id': block_ids[x][y],
+                            'block_id': block_ids[y][x],
                             'position': k,
                             'relative_position': (dx[k], dy[k])
                         })
@@ -212,6 +215,8 @@ class Manager:
                 blocksReceived[rank - 1] = True
 
         sqr_of_worker = int(self.worker_count ** 0.5)
+
+        self.gather_grids_and_print()
 
         # 6) Run R rounds with a 2x2 checkerboard scheme
         for _ in range(Utils.R):

@@ -91,6 +91,7 @@ class Worker:
             elif self.state == 2:
                 for neighbor in self.block.adjacent_blocks:
                     boundary_data = comm.recv(source=neighbor['block_id'], tag=10)
+                    self.block.update_boundary(boundary_data['grid'], neighbor['position'])
 
                 comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'],
                           dest=MESSAGES['ACTIVE_TIME_DONE']['dest'],
@@ -103,7 +104,7 @@ class Worker:
                 for neighbor in self.block.adjacent_blocks:
                     # Only send to neighbors that are also in the active checkerboard group
                     if Utils.is_current_worker(neighbor['block_id'], current_group):
-                        comm.send(self.extract_block(neighbor['position']),
+                        comm.send({'grid': self.extract_block(neighbor['position']), 'position': neighbor['position']},
                                   dest=neighbor['block_id'], tag=10)
                 self.state = 0
 
@@ -285,25 +286,25 @@ class Worker:
                 nx2, ny2 = nx + dx, ny + dy
                 attack_coord(nx2, ny2)
 
-    def request_data(self, coordinates):
-        """
-        Example of requesting data from another worker's block.
-        """
-        dest_block_id = Utils.coordinates_to_block_id(
-            coordinates[0], coordinates[1], Utils.N, Utils.worker_count
-        )
-        comm.send([coordinates, self.rank], dest=dest_block_id, tag=69)
-        data = comm.recv(source=dest_block_id, tag=MPI.ANY_TAG)
-        print(f"Worker {self.rank}: Requested data at {coordinates}, received: {data}")
+    # def request_data(self, coordinates):
+    #     """
+    #     Example of requesting data from another worker's block.
+    #     """
+    #     dest_block_id = Utils.coordinates_to_block_id(
+    #         coordinates[0], coordinates[1], Utils.N, Utils.worker_count
+    #     )
+    #     comm.send([coordinates, self.rank], dest=dest_block_id, tag=69)
+    #     data = comm.recv(source=dest_block_id, tag=MPI.ANY_TAG)
+    #     print(f"Worker {self.rank}: Requested data at {coordinates}, received: {data}")
 
-    def send_data(self):
-        """
-        Example of providing data to a requesting worker (tag=69).
-        """
-        request = comm.recv(source=MPI.ANY_SOURCE, tag=69)
-        if request is None:
-            self.state = -1
-            return
-        coord, requester_rank = request
-        data = self.block.get_grid_element(coord[0], coord[1])
-        comm.send(data, dest=requester_rank, tag=69)
+    # def send_data(self):
+    #     """
+    #     Example of providing data to a requesting worker (tag=69).
+    #     """
+    #     request = comm.recv(source=MPI.ANY_SOURCE, tag=69)
+    #     if request is None:
+    #         self.state = -1
+    #         return
+    #     coord, requester_rank = request
+    #     data = self.block.get_grid_element(coord[0], coord[1])
+    #     comm.send(data, dest=requester_rank, tag=69)
