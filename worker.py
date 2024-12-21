@@ -1,18 +1,17 @@
 from mpi4py import MPI
-from utils import Utils  # <-- Import the entire Utils class
+from utils import Utils 
 from block import Block
 from unit import Unit, EarthUnit, FireUnit, WaterUnit, AirUnit
-import time
 from constants import MESSAGES
 
 comm = MPI.COMM_WORLD
 
 
-def print_grid(grid):
+def print_grid(grid, rank=None):
     """
     Helper function to convert a 2D grid into a string for debugging.
     """
-    string = ""
+    string = f"rank: {rank}\n"
     for row in grid:
         row_str = ""
         for cell in row:
@@ -35,6 +34,10 @@ class Worker:
         """
         block_data = comm.recv(source=0, tag=1)
         self.block: Block = block_data
+
+    def receive_units(self):
+        units_data = comm.recv(source=0, tag=2)
+        self.block.add_units(units_data)
 
     def extract_block(self, position):
         """
@@ -82,17 +85,32 @@ class Worker:
             # 1) Receive blocks from manager
             if self.state == 1:
                 self.receive_block()
-                comm.send(MESSAGES['BLOCKS_RECEIVED']['message'],
-                          dest=MESSAGES['BLOCKS_RECEIVED']['dest'],
-                          tag=MESSAGES['BLOCKS_RECEIVED']['tag'])
+                self.state = 0
+            
+            elif self.state == 20:
+                for x,y in self.new_water_units:
+                    grid_x,grid_y = self.block.get_block_coordinates(x,y)
+                    self.block.grid[grid_x][grid_y] = WaterUnit(x, y)
+                
+                self.new_water_units.clear()
+
+                for i in range(len(self.block.grid)):
+                    for j in range(len(self.block.grid[0])):
+                        if self.block.grid[i][j] != '.':
+                            fire_unit = self.block.grid[i][j]
+                            if fire_unit.unit_type == 'F':
+                                fire_unit.reset_inferno()
+
+                self.receive_units()
                 self.state = 0
 
             # 2) Worker becomes "receiver" of boundary data
             elif self.state == 2:
+                self.block.reset_boundary()
                 for neighbor in self.block.adjacent_blocks:
                     boundary_data = comm.recv(source=neighbor['block_id'], tag=10)
                     self.block.update_boundary(boundary_data['grid'], neighbor['position'])
-
+                self.apply_inferno()
                 comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'],
                           dest=MESSAGES['ACTIVE_TIME_DONE']['dest'],
                           tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])
@@ -144,7 +162,7 @@ class Worker:
                                 self.block.grid[i][j] = '.'
                 self.state = 0
 
-            # 8) Heal Phase
+            # 7) Heal Phase
             elif self.state == 7:
                 for i in range(len(self.block.grid)):
                     for j in range(len(self.block.grid[0])):
@@ -156,6 +174,8 @@ class Worker:
                             # Reset its attack state
                             unit.attack_done = False
                 self.state = 0
+
+
             elif self.state == 8:  # water floods
                 for i in range(len(self.block.grid)):
                     for j in range(len(self.block.grid[0])):
@@ -163,6 +183,12 @@ class Worker:
                             water_unit = self.block.grid[i][j]
                             if water_unit.unit_type == 'W':
                                 self.create_water_unit(water_unit)
+
+                comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'],
+                          dest=MESSAGES['ACTIVE_TIME_DONE']['dest'],
+                          tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])
+                self.state = 0
+
             elif self.state == 9:
                 self.take_water_unit()
                 self.state = 0
@@ -171,18 +197,10 @@ class Worker:
             elif self.state == 10:
                 # Send block back to manager (for final collection)
                 comm.send(self.block, dest=0, tag=10)
-            elif self.state ==11: # start wave
-                for x,y in self.new_water_units:
-                    grid_x,grid_y = self.block.get_block_coordinates(x,y)
-                    self.block.grid[grid_x][grid_y] = WaterUnit(x, y)
-                for i in range(len(self.block.grid)):
-                    for j in range(len(self.block.grid[0])):
-                        if self.block.grid[i][j] != '.':
-                            fire_unit = self.block.grid[i][j]
-                            if fire_unit.unit_type == 'F':
-                                fire_unit.reset_inferno()
 
+                
 
+ 
 
             elif self.state == -1:
                 print(f"Worker {self.rank}: Terminating.")
@@ -203,9 +221,7 @@ class Worker:
                         break
 
     def send_water_unit(self, x, y):
-        dest_block_id = Utils.coordinates_to_block_id(
-            x, y, Utils.N, Utils.worker_count
-        )
+        dest_block_id = Utils.coordinates_to_block_id(x, y)
         comm.send([x, y, self.rank], dest=dest_block_id, tag=71)
         success = comm.recv(source=dest_block_id, tag=71)
         return success
@@ -227,9 +243,7 @@ class Worker:
                 comm.send(False, dest=sender_rank, tag=71)
 
     def apply_damage(self, coordinates, unit: Unit):
-        dest_block_id = Utils.coordinates_to_block_id(
-            coordinates[0], coordinates[1], Utils.N, Utils.worker_count
-        )
+        dest_block_id = Utils.coordinates_to_block_id(coordinates[0], coordinates[1])
         comm.send([coordinates, unit.attack_power, unit.unit_type, unit.x, unit.y, self.rank],
                   dest=dest_block_id, tag=70)
         # Wait for confirmation (True = damage applied, False = blocked)
@@ -284,13 +298,36 @@ class Worker:
         for dx, dy in unit.directions:
             nx, ny = unit.x + dx, unit.y + dy
             did_attack = attack_coord(nx, ny)
-            if unit.unit_type == 'F':
+            if did_attack and unit.unit_type == 'F':
                 unit.enemies_attacked.append((nx, ny))
 
             # Example: Air unit can "pierce" one more cell
             if not did_attack and unit.unit_type == 'A':
                 nx2, ny2 = nx + dx, ny + dy
                 attack_coord(nx2, ny2)
+
+
+    def apply_inferno(self):
+
+        def is_inferno_available(unit: FireUnit):
+            for [row, column] in unit.enemies_attacked:
+                enemy = self.block.get_grid_with_boundary_element(row, column)
+                print(unit.x, unit.y, row, column, enemy)
+                if enemy == '.':
+                    return True
+                
+            return False
+
+        for i in range(len(self.block.grid)):
+            for j in range(len(self.block.grid[0])):
+                if self.block.grid[i][j] != '.':
+                    unit = self.block.grid[i][j]
+                    if unit.unit_type == 'F':
+                        if is_inferno_available(unit):
+                            unit.inferno()
+                        
+                        unit.reset_enemies_attacked()
+                        
 
     # def request_data(self, coordinates):
     #     """

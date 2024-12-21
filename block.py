@@ -12,23 +12,6 @@ class Block:
         self.grid = [['.' for _ in range(self.size[0])] for _ in range(self.size[1])]
         self.grid_with_boundary = [['.' for _ in range(self.size[0] + 6)] for _ in range(self.size[1] + 6)]
 
-    def fill_grid(self):
-        for faction in self.units:
-            for unit in self.units[faction]:
-                coords = self.get_block_coordinates(unit[0], unit[1])
-                if faction == "E":
-                    self.grid[coords[0]][coords[1]] = EarthUnit(unit[0], unit[1])
-                    self.grid_with_boundary[coords[0] + 3][coords[1] + 3] = "E"
-                elif faction == "F":
-                    self.grid[coords[0]][coords[1]] = FireUnit(unit[0], unit[1])
-                    self.grid_with_boundary[coords[0] + 3][coords[1] + 3] = "F"
-                elif faction == "W":
-                    self.grid[coords[0]][coords[1]] = WaterUnit(unit[0], unit[1])
-                    self.grid_with_boundary[coords[0] + 3][coords[1] + 3] = "W"
-                elif faction == "A":
-                    self.grid[coords[0]][coords[1]] = AirUnit(unit[0], unit[1])
-                    self.grid_with_boundary[coords[0] + 3][coords[1] + 3] = "A"
-
     def get_block_coordinates(self, x, y):
         return (x - self.top_left[0], y - self.top_left[1])
 
@@ -40,6 +23,9 @@ class Block:
 
     def is_coordinate_inside(self, x, y):
         return self.top_left[0] <= x < self.bottom_right[0] and self.top_left[1] <= y < self.bottom_right[1]
+    
+    def get_grid_with_boundary_element(self, x, y):
+        return self.grid_with_boundary[x - self.top_left[0] + 3][y - self.top_left[1] + 3]
     
     def update_boundary(self, boundary, position):
         # add 3x3 boundary to the top left corner
@@ -90,8 +76,29 @@ class Block:
                 for j in range(3):
                     self.grid_with_boundary[i + 3][j] = boundary[i][j]   
 
+    
+    def reset_boundary(self):
+        for i in range(self.size[1]):
+            for j in range(self.size[0]):
+                self.grid_with_boundary[i + 3][j + 3] = self.grid[i][j]
 
-        
+    
+    def add_units(self, units):
+        for unit in units:
+            faction = unit[0]
+            x, y = unit[1], unit[2]
+
+            if self.get_grid_element(x, y) != ".":
+                continue
+
+            if faction == "E":
+                self.grid[x - self.top_left[0]][y - self.top_left[1]] = EarthUnit(x, y)
+            elif faction == "F":
+                self.grid[x - self.top_left[0]][y - self.top_left[1]] = FireUnit(x, y)
+            elif faction == "W":
+                self.grid[x - self.top_left[0]][y - self.top_left[1]] = WaterUnit(x, y)
+            elif faction == "A":
+                self.grid[x - self.top_left[0]][y - self.top_left[1]] = AirUnit(x, y)
 
 
     def __str__(self):

@@ -7,7 +7,15 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 
-manager = Manager("input.txt", "output.txt", size - 1)
+if(len(sys.argv) < 2):
+    input_file = "input.txt"
+    output_file = "output.txt"
+
+else:
+    input_file = sys.argv[1]
+    output_file = sys.argv[2]
+
+manager = Manager(input_file, output_file, size - 1)
 workers = [Worker(i + 1) for i in range(size - 1)]
 
 if rank == 0:

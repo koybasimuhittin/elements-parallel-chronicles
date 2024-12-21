@@ -21,7 +21,7 @@ class Unit:
         return self.health > 0
 
     def __str__(self):
-        return ((str)(self.unit_type))
+        return ((str)(self.unit_type) + (str)(self.attack_power))
 
     def heal(self):
         return
@@ -59,13 +59,16 @@ class FireUnit(Unit):
         self.directions = [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
 
     def inferno(self):
-        if not self.inferno_triggered and self.attack_power < 6:
+        if self.attack_power < 6:
             self.attack_power += 1
             print(f"Inferno activated! Attack power increased to {self.attack_power}.")
 
     def reset_inferno(self):
-        self.attack_power=self.base_attack_power
+        self.attack_power = self.base_attack_power
         self.enemies_attacked=[]
+
+    def reset_enemies_attacked(self):
+        self.enemies_attacked = []
 
     def heal(self):
         self.health = min(12, self.health + self.healing_rate)
