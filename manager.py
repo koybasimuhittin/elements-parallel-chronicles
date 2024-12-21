@@ -138,6 +138,8 @@ class Manager:
                         if not current_workers[i - 1]:
                             comm.send(None, dest = i, tag=69)
 
+            print("War is starting")
+
 
             for x in range(2):
                 for y in range(2):

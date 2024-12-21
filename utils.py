@@ -1,6 +1,9 @@
 from mpi4py import MPI
 
-global N, W, T, R
+N = 0
+W = 0
+T = 0
+R = 0
 
 comm = MPI.COMM_WORLD
 
