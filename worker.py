@@ -1,5 +1,5 @@
 from mpi4py import MPI
-from utils import Utils 
+from utils import Utils
 from block import Block
 from unit import Unit, EarthUnit, FireUnit, WaterUnit, AirUnit
 from constants import MESSAGES
@@ -27,6 +27,7 @@ class Worker:
         self.state = 0
         self.block = None
         self.new_water_units = set()
+        self.new_air_units = []
 
     def receive_block(self):
         """
@@ -86,12 +87,12 @@ class Worker:
             if self.state == 1:
                 self.receive_block()
                 self.state = 0
-            
+
             elif self.state == 20:
-                for x,y in self.new_water_units:
-                    grid_x,grid_y = self.block.get_block_coordinates(x,y)
+                for x, y in self.new_water_units:
+                    grid_x, grid_y = self.block.get_block_coordinates(x, y)
                     self.block.grid[grid_x][grid_y] = WaterUnit(x, y)
-                
+
                 self.new_water_units.clear()
 
                 for i in range(len(self.block.grid)):
@@ -193,14 +194,47 @@ class Worker:
                 self.take_water_unit()
                 self.state = 0
 
+            elif self.state == 10:  # calculate the new position of the air unit
+                for i in range(len(self.block.grid)):
+                    for j in range(len(self.block.grid[0])):
+                        if self.block.grid[i][j] != '.':
+                            air_unit = self.block.grid[i][j]
+                            if air_unit.unit_type == 'A':
+                                new_coordinates = self.air_movement(air_unit)
+                                air_unit.change_position(new_coordinates)
+                                if self.block.is_coordinate_inside(new_coordinates[0], new_coordinates[1]):
+                                    self.new_air_units.append(air_unit)
+                                else:
+                                    self.send_air_unit(air_unit)
+                for i in range(len(self.block.grid)):
+                    for j in range(len(self.block.grid[0])):
+                        if self.block.grid[i][j] != '.':
+                            air_unit = self.block.grid[i][j]
+                            if air_unit.unit_type == 'A':
+                                self.block.grid[i][j] = '.'  # remove the air unit
+                self.state = 0
+            elif self.state == 11:
+                self.take_air_unit()
+                self.state = 0
+            elif self.state == 12:
+                for air_unit in self.new_air_units:
+                    x,y = self.block.get_block_coordinates(air_unit.x,air_unit.y)
+                    new_position=self.block.get_grid_element(air_unit.x,air_unit.y)
+                    if new_position == '.':
+                        self.block.grid[x][y]=air_unit
+                    else:
+                        self.block.grid[x][y].unite(air_unit)
+
+
+
             # Anything else or termination
-            elif self.state == 10:
+            elif self.state == 13:
                 # Send block back to manager (for final collection)
                 comm.send(self.block, dest=0, tag=10)
 
-                
 
- 
+
+
 
             elif self.state == -1:
                 print(f"Worker {self.rank}: Terminating.")
@@ -241,6 +275,48 @@ class Worker:
                 comm.send(True, dest=sender_rank, tag=71)
             else:
                 comm.send(False, dest=sender_rank, tag=71)
+
+    def send_air_unit(self, air_unit):
+        dest_block_id = Utils.coordinates_to_block_id(air_unit.x, air_unit.y)
+        comm.send(air_unit, dest=dest_block_id, tag=72)
+
+    def take_air_unit(self):
+        while True:
+            air_unit = comm.recv(source=MPI.ANY_SOURCE, tag=72)
+            if air_unit is None:
+                self.state = 0
+                return
+
+            self.new_air_units.append(air_unit)
+
+    def air_movement(self, unit: AirUnit):
+        def calculate_number_of_enemies(x, y):
+            cnt = 0
+            for dx, dy in unit.directions:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < Utils.N and 0 <= ny < Utils.N:
+                    enemy = self.block.get_grid_element(nx, ny)
+                    if enemy == '.':
+                        new_x, new_y = nx + dx, ny + dy
+                        if 0 <= new_x < Utils.N and 0 <= new_y < Utils.N:
+                            new_enemy = self.block.get_grid_element(new_x, new_y)
+                            if new_enemy != '.' or new_enemy.unit_type != 'A':
+                                cnt += 1
+                    elif enemy.unit_type != 'A':
+                        cnt += 1
+            return cnt
+
+        new_coordinates = (unit.x, unit.y)
+        max_enemies = calculate_number_of_enemies(unit.x, unit.y)
+        directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+        for dx, dy in directions:
+            nx, ny = unit.x + dx, unit.y + dy
+            if 0 <= nx < Utils.N and 0 <= ny < Utils.N:
+                number_of_enemies = calculate_number_of_enemies(nx, ny)
+                if number_of_enemies > max_enemies:
+                    new_coordinates = (nx, ny)
+                    max_enemies = number_of_enemies
+        return new_coordinates
 
     def apply_damage(self, coordinates, unit: Unit):
         dest_block_id = Utils.coordinates_to_block_id(coordinates[0], coordinates[1])
@@ -306,7 +382,6 @@ class Worker:
                 nx2, ny2 = nx + dx, ny + dy
                 attack_coord(nx2, ny2)
 
-
     def apply_inferno(self):
 
         def is_inferno_available(unit: FireUnit):
@@ -315,7 +390,7 @@ class Worker:
                 print(unit.x, unit.y, row, column, enemy)
                 if enemy == '.':
                     return True
-                
+
             return False
 
         for i in range(len(self.block.grid)):
@@ -325,9 +400,8 @@ class Worker:
                     if unit.unit_type == 'F':
                         if is_inferno_available(unit):
                             unit.inferno()
-                        
+
                         unit.reset_enemies_attacked()
-                        
 
     # def request_data(self, coordinates):
     #     """
