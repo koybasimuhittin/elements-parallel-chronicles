@@ -142,6 +142,23 @@ class Manager:
                 if (i % 2 == x) and (j % 2 == y):
                     current_workers[i * sqr_of_worker + j] = True
         return current_workers
+    
+    def gather_grids_and_print(self):
+        # 7) Gather final grid state
+        finalGrid = [['.' for _ in range(Utils.N)] for _ in range(Utils.N)]
+        # Instruct each worker to send its final block
+        for rank in range(1, self.worker_count + 1):
+            comm.send({'state': 10}, dest=rank, tag=10)
+            block = comm.recv(source=rank, tag=10)
+            # Merge block content into finalGrid
+            for row_idx in range(block.top_left[0], block.bottom_right[0]):
+                for col_idx in range(block.top_left[1], block.bottom_right[1]):
+                    finalGrid[row_idx][col_idx] = str(
+                        block.grid[row_idx - block.top_left[0]][col_idx - block.top_left[1]]
+                    )
+        for row in finalGrid:
+            print(row)
+        print()
 
     def run(self):
         """
@@ -234,29 +251,24 @@ class Manager:
                         if not current_workers[rank - 1]:
                             comm.send(None, dest=rank, tag=70)
 
-            print("Round is done")
-
+            print("Attack is done")
             current_workers = [True] * self.worker_count
             self.set_states([6, 6], current_workers, -1)
-            self.set_states([7, 7], current_workers, -1)
 
+            self.gather_grids_and_print()
 
+            self.set_states([8, 8], current_workers, -1)
 
-        # 7) Gather final grid state
-        finalGrid = [['.' for _ in range(Utils.N)] for _ in range(Utils.N)]
-        # Instruct each worker to send its final block
+            print("Healing is done")
+            self.gather_grids_and_print()
+            print("Round is done")
+            print()
+            
+            
+
         for rank in range(1, self.worker_count + 1):
             comm.send({'state': -1}, dest=rank, tag=10)
-            block = comm.recv(source=rank, tag=10)
-            # Merge block content into finalGrid
-            for row_idx in range(block.top_left[0], block.bottom_right[0]):
-                for col_idx in range(block.top_left[1], block.bottom_right[1]):
-                    finalGrid[row_idx][col_idx] = str(
-                        block.grid[row_idx - block.top_left[0]][col_idx - block.top_left[1]]
-                    )
-        print("Final grid:")
-        for row in finalGrid:
-            print(row)
+
 
     # Uncomment if you had some alternate run logic
     # def run2(self):

@@ -31,7 +31,6 @@ class Block:
         return (x + self.top_left[0], y + self.top_left[1])
 
     def get_grid_element(self, x, y):
-        print(f"Getting grid element at {x}, {y}")
         return self.grid[x - self.top_left[0]][y - self.top_left[1]]
 
     def is_coordinate_inside(self, x, y):

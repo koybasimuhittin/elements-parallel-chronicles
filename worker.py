@@ -33,7 +33,6 @@ class Worker:
         Receive block data from the Manager (rank 0).
         """
         block_data = comm.recv(source=0, tag=1)
-        print(f"Worker {self.rank}: Received block with ID {block_data.id} from Manager.")
         self.block: Block = block_data
 
     def extract_block(self, position):
@@ -89,11 +88,8 @@ class Worker:
 
             # 2) Worker becomes "receiver" of boundary data
             elif self.state == 2:
-                print(f"Worker {self.rank}: Receiving boundaries.")
                 for neighbor in self.block.adjacent_blocks:
                     boundary_data = comm.recv(source=neighbor['block_id'], tag=10)
-                    print(f"Worker {self.rank}: Received boundary from Worker {neighbor['block_id']}.")
-                    print(print_grid(boundary_data))
 
                 comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'],
                           dest=MESSAGES['ACTIVE_TIME_DONE']['dest'],
@@ -102,19 +98,16 @@ class Worker:
 
             # 3) Worker becomes "sender" of boundary data
             elif self.state == 3:
-                print(f"Worker {self.rank}: Sending boundaries.")
                 current_group = data['current_worker_group']
                 for neighbor in self.block.adjacent_blocks:
                     # Only send to neighbors that are also in the active checkerboard group
                     if Utils.is_current_worker(neighbor['block_id'], current_group):
-                        print(f"Worker {self.rank}: Sending boundary to Worker {neighbor['block_id']}.")
                         comm.send(self.extract_block(neighbor['position']),
                                   dest=neighbor['block_id'], tag=10)
                 self.state = 0
 
             # 4) Attack Phase
             elif self.state == 4:
-                print(f"Worker {self.rank}: Attacking.")
                 for i in range(len(self.block.grid)):
                     for j in range(len(self.block.grid[0])):
                         if self.block.grid[i][j] != '.':
@@ -126,7 +119,6 @@ class Worker:
 
             # 5) Take Damage Phase
             elif self.state == 5:
-                print(f"Worker {self.rank}: Taking damage.")
                 self.take_damage()
                 self.state = 0
 
@@ -164,10 +156,12 @@ class Worker:
                 self.state = 0
 
             # Anything else or termination
-            else:
-                print(f"Worker {self.rank}: Idle or shutting down.")
+            elif self.state == 10:
                 # Send block back to manager (for final collection)
                 comm.send(self.block, dest=0, tag=10)
+
+            elif self.state == -1:
+                print(f"Worker {self.rank}: Terminating.")
                 break
 
     def apply_damage(self, coordinates, unit: Unit):
@@ -211,7 +205,6 @@ class Worker:
         def attack_coord(x, y):
             # If within the global grid
             if 0 <= x < Utils.N and 0 <= y < Utils.N:
-                print(f"Worker {self.rank}: {unit.unit_type} at ({unit.x}, {unit.y}) attacking ({x}, {y}).")
                 # If target cell is in the same block:
                 if self.block.is_coordinate_inside(x, y):
                     local_unit = self.block.get_grid_element(x, y)

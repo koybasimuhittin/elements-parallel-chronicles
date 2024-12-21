@@ -1,6 +1,3 @@
-import utils
-
-
 class Unit:
     """
     Base class for a unit on the battlefield.
@@ -16,6 +13,7 @@ class Unit:
         self.healing_rate = healing_rate  # Healing rate when not attacking
         self.damage_taken = 0
         self.attack_done = False
+        self.fire_attackers = []
 
     def is_alive(self):
         """
