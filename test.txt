@@ -1,0 +1,528 @@
+After wave initialization:
+
+E unit created at (0, 0) with health=18, attack_power=2
+E unit created at (1, 1) with health=18, attack_power=2
+F unit created at (2, 2) with health=12, attack_power=4
+F unit created at (3, 3) with health=12, attack_power=4
+W unit created at (4, 4) with health=14, attack_power=3
+W unit created at (4, 5) with health=14, attack_power=3
+A unit created at (6, 6) with health=10, attack_power=2
+A unit created at (7, 7) with health=10, attack_power=2
+
+Battlefield:
+E . . . . . . .
+. E . . . . . .
+. . F . . . . .
+. . . F . . . .
+. . . . W W . .
+. . . . . . . .
+. . . . . . A .
+. . . . . . . A
+
+ROUND 1:
+	After windrush:
+		Unit A moved from (7, 7) to (6, 7)
+		Unit A moved from (6, 6) to (5, 5)
+	E . . . . . . .
+	. E . . . . . .
+	. . F . . . . .
+	. . . F . . . .
+	. . . . W W . .
+	. . . . . A . .
+	. . . . . . . A
+	. . . . . . . .
+
+	E unit at (0, 0) has no valid targets.
+	E unit at (1, 1) has no valid targets.
+	W unit at (4, 5) has no valid targets.
+
+	F unit at (2, 2) attacking (1, 1) with 4 damage.
+	F unit at (3, 3) attacking (4, 4) with 4 damage.
+
+	W unit at (4, 4) attacking (3, 3) with 3 damage.
+	W unit at (4, 4) attacking (5, 5) with 3 damage.
+
+	A unit at (5, 5) attacking (4, 4) with 2 damage.
+	A unit at (5, 5) attacking (4, 5) with 2 damage.
+
+	A unit at (6, 7) attacking (4, 5) with 2 damage.
+
+	Health reducements:
+		E unit at (1, 1) took 4//2 damage, health now 16.
+		W unit at (4, 4) took 6 damage, health now 8.
+		F unit at (3, 3) took 3 damage, health now 9.
+		A unit at (5, 5) took 3 damage, health now 7.
+		W unit at (4, 5) took 4 damage, health now 10.
+
+	Healings:
+		E unit at (1, 1) healed to 18 health.
+		W unit at (4, 5) healed to 12 health.
+
+	No deaths, grid stays the same.
+
+ROUND 2:
+	After windrush:
+		No air unit movements. Grid stays the same.
+	E . . . . . . .
+	. E . . . . . .
+	. . F . . . . .
+	. . . F . . . .
+	. . . . W W . .
+	. . . . . A . .
+	. . . . . . . A
+	. . . . . . . .	
+	
+	E unit at (0, 0) has no valid targets.
+	E unit at (1, 1) has no valid targets.
+	W unit at (4, 5) has no valid targets.
+
+	F unit at (2, 2) attacking (1, 1) with 4 damage.
+
+	F unit at (3, 3) attacking (4, 4) with 4 damage.
+
+	W unit at (4, 4) attacking (3, 3) with 3 damage.
+	W unit at (4, 4) attacking (5, 5) with 3 damage.
+
+	A unit at (5, 5) attacking (4, 4) with 2 damage.
+	A unit at (5, 5) attacking (4, 5) with 2 damage.
+
+	A unit at (6, 7) attacking (4, 5) with 2 damage.
+
+	Health reducements:
+		E unit at (1, 1) took 4//2 damage, health now 16.
+		W unit at (4, 4) took 6 damage, health now 2.
+		F unit at (3, 3) took 3 damage, health now 6.
+		A unit at (5, 5) took 3 damage, health now 4.
+		W unit at (4, 5) took 4 damage, health now 8.
+
+	Healings:
+		E unit at (1, 1) healed to 18 health.
+		W unit at (4, 5) healed to 10 health.
+
+	No deaths, grid stays the same.
+
+ROUND 3:
+	After windrush:
+		No air unit movements. Grid stays the same.
+	E . . . . . . .
+	. E . . . . . .
+	. . F . . . . .
+	. . . F . . . .
+	. . . . W W . .
+	. . . . . A . .
+	. . . . . . . A
+	. . . . . . . .	
+	
+	E unit at (0, 0) has no valid targets.
+	E unit at (1, 1) has no valid targets.
+	W unit at (4, 5) has no valid targets.
+	W unit at (4, 4) is below 50% health and skips attacking to heal.
+	A unit at (5, 5) is below 50% health and skips attacking to heal.
+
+	F unit at (2, 2) attacking (1, 1) with 4 damage.
+
+	F unit at (3, 3) attacking (4, 4) with 4 damage.
+
+	A unit at (5, 5) attacking (4, 4) with 2 damage.
+	A unit at (5, 5) attacking (4, 5) with 2 damage.
+
+	A unit at (6, 7) attacking (4, 5) with 2 damage.
+
+	Health reducements:
+		E unit at (1, 1) took 4//2 damage, health now 16.
+		W unit at (4, 4) took 4 damage, health now -2.
+		W unit at (4, 4) has died.
+		Fire unit at (3, 3) increased attack power to 5 after killing a unit at (4, 4).
+		W unit at (4, 5) took 2 damage, health now 8.
+
+	Healings:
+		E unit at (1, 1) healed to 18 health.
+		W unit at (4, 5) healed to 10 health.
+		A unit at (5, 5) healed to 6 health.
+
+	Grid after round 3:
+		E . . . . . . .
+		. E . . . . . .
+		. . F . . . . .
+		. . . F . . . .
+		. . . . . W . .
+		. . . . . A . .
+		. . . . . . . A
+		. . . . . . . .
+
+ROUND 4:
+	After windrush:
+		No air unit movements. Grid stays the same.
+	
+	E unit at (0, 0) has no valid targets.
+	E unit at (1, 1) has no valid targets.
+	F unit at (3, 3) has no valid targets.
+	W unit at (4, 5) has no valid targets.
+	
+	F unit at (2, 2) attacking (1, 1) with 4 damage.
+
+	A unit at (5, 5) attacking (4, 5) with 2 damage.
+	A unit at (5, 5) attacking (3, 3) with 2 damage.
+	
+	A unit at (6, 7) attacking (4, 5) with 2 damage.
+
+
+	Health reducements:
+		E unit at (1, 1) took 4//2 damage, health now 16.
+		W unit at (4, 5) took 4 damage, health now 6.
+		F unit at (3, 3) took 2 damage, health now 4.
+
+	Healings:
+		E unit at (1, 1) healed to 18 health.
+		F unit at (3, 3) healed to 5 health.
+		W unit at (4, 5) healed to 8 health.
+
+	End of the wave actions:
+
+		Fire unit at (3, 3) reset attack power to 4.
+		Flood ability: Converted neutral cell (3, 4) into a Water unit.
+			W unit created at (3, 4) with health=14, attack_power=3
+
+	Grid after round 4:
+		E . . . . . . .
+		. E . . . . . .
+		. . F . . . . .
+		. . . F W . . .
+		. . . . . W . .
+		. . . . . A . .
+		. . . . . . . A
+		. . . . . . . .
+
+WAVE 2:
+	E unit created at (1, 0) with health=18, attack_power=2
+	E unit created at (2, 1) with health=18, attack_power=2
+	F unit created at (3, 2) with health=12, attack_power=4
+	F unit created at (4, 3) with health=12, attack_power=4
+	W unit created at (5, 4) with health=14, attack_power=3
+	W unit created at (6, 5) with health=14, attack_power=3
+	A unit created at (7, 6) with health=10, attack_power=2
+	A unit created at (0, 7) with health=10, attack_power=2
+
+Grid after initialization:
+	E . . . . . . A
+	E E . . . . . .
+	. E F . . . . .
+	. . F F W . . .
+	. . . F . W . .
+	. . . . W A . .
+	. . . . . W . A
+	. . . . . . A .
+ROUND 1:
+	After windrush:
+		Unit A moved from (5, 5) to (4, 4)
+		Unit A moved from (0, 7) to (1, 6)
+	E . . . . . . .
+	E E . . . . A .
+	. E F . . . . .
+	. . F F W . . .
+	. . . F A W . .
+	. . . . W . . .
+	. . . . . W . A
+	. . . . . . A .
+	
+	
+	E unit at (0, 0) has no valid targets.
+	E unit at (1, 1) has no valid targets.
+	W unit at (4, 5) has no valid targets.
+	E unit at (1, 0) has no valid targets.
+
+	F unit at (3, 3) has health 5/12 (< %50) and skips attacking to heal.
+
+	F unit at (2, 2) attacking (1, 1) with 4 damage.
+	F unit at (2, 2) attacking (2, 1) with 4 damage.
+
+	A unit at (4, 4) attacking (3, 4) with 2 damage.
+	A unit at (4, 4) attacking (4, 3) with 2 damage.
+	A unit at (4, 4) attacking (5, 4) with 2 damage.
+	A unit at (4, 4) attacking (4, 5) with 2 damage.
+	A unit at (4, 4) attacking (3, 3) with 2 damage.
+
+	A unit at (6, 7) attacking (4, 5) with 2 damage.
+	A unit at (6, 7) attacking (6, 5) with 2 damage.
+
+	W unit at (3, 4) attacking (4, 3) with 3 damage.
+	
+	E unit at (2, 1) attacking (2, 2) with 2 damage.
+
+	F unit at (3, 2) attacking (2, 1) with 4 damage.
+
+	F unit at (4, 3) attacking (4, 4) with 4 damage.
+	F unit at (4, 3) attacking (5, 4) with 4 damage.
+	F unit at (4, 3) attacking (3, 4) with 4 damage.
+
+	W unit at (5, 4) attacking (4, 3) with 3 damage.
+
+	W unit at (6, 5) attacking (7, 6) with 3 damage.
+
+	A unit at (7, 6) attacking (8, 2) with 2 damage.
+	A unit at (7, 6) attacking (6, 5) with 2 damage.
+	A unit at (7, 6) attacking (8, 1) with 2 damage.
+
+	A unit at (1, 6) attacking (3, 4) with 2 damage.
+
+	Health reducements:
+		E unit at (1, 1) took 4//2 damage, health now 16.
+		E unit at (2, 1) took 8//2 damage, health now 14.
+		W unit at (3, 4) took 8 damage, health now 6.
+		F unit at (4, 3) took 8 damage, health now 4.
+		W unit at (5, 4) took 6 damage, health now 8.
+		W unit at (4, 5) took 4 damage, health now 4.
+		F unit at (3, 3) took 2 damage, health now 3.
+		W unit at (6, 5) took 4 damage, health now 10.
+		F unit at (2, 2) took 2 damage, health now 10.
+		A unit at (4, 4) took 4 damage, health now 2.
+		A unit at (7, 6) took 3 damage, health now 7.
+
+	Healings:
+		E unit at (1, 1) healed to 18 health.
+		F unit at (3, 3) healed to 4 health.
+		W unit at (4, 5) healed to 6 health.
+
+	No deaths, grid stays the same.
+
+ROUND 2:
+	After windrush:
+		Unit A moved from (6, 7) to (5, 6)
+		Unit A moved from (1, 6) to (2, 5)
+	E . . . . . . .
+	E E . . . . . .
+	. E F . . A . .
+	. . F F W . . .
+	. . . F A W . .
+	. . . . W . A .
+	. . . . . W . .
+	. . . . . . A .
+	
+		E unit at (0, 0) has no valid targets.
+		E unit at (1, 1) has no valid targets.
+		E unit at (1, 0) has no valid targets.
+
+		F unit at (3, 3) has health 4/12 and skips attacking to heal.
+		W unit at (3, 4) has health 6/14 and skips attacking to heal.
+		W unit at (4, 5) has health 6/14 and skips attacking to heal.
+		A unit at (4, 4) has health 2/10 and skips attacking to heal.
+		F unit at (4, 3) has health 4/12 and skips attacking to heal.
+
+		F unit at (2, 2) attacking (1, 1) with 4 damage.
+		F unit at (2, 2) attacking (2, 1) with 4 damage.
+
+		A unit at (5, 6) attacking (4, 5) with 2 damage.
+		A unit at (5, 6) attacking (5, 4) with 2 damage.
+		A unit at (5, 6) attacking (6, 5) with 2 damage.
+
+		E unit at (2, 1) attacking (2, 2) with 2 damage.
+
+		F unit at (3, 2) attacking (2, 1) with 4 damage.
+
+		W unit at (5, 4) attacking (4, 3) with 3 damage.
+
+		W unit at (6, 5) attacking (7, 6) with 3 damage.
+		W unit at (6, 5) attacking (5, 6) with 3 damage.
+
+		A unit at (7, 6) attacking (8, 2) with 2 damage.
+		A unit at (7, 6) attacking (6, 5) with 2 damage.
+		A unit at (7, 6) attacking (8, 1) with 2 damage.
+
+		A unit at (2, 5) attacking (4, 5) with 2 damage.
+		A unit at (2, 5) attacking (3, 4) with 2 damage.
+
+	Health reducements:
+		E unit at (1, 1) took 4//2 damage, health now 16.
+		E unit at (2, 1) took 8//2 damage, health now 10.
+		W unit at (4, 5) took 4//2 damage, health now 2.
+		W unit at (5, 4) took 2 damage, health now 6.
+		W unit at (6, 5) took 4 damage, health now 6.
+		F unit at (2, 2) took 2 damage, health now 8.
+		F unit at (4, 3) took 3 damage, health now 1.
+		A unit at (7, 6) took 3 damage, health now 4.
+		A unit at (5, 6) took 3 damage, health now 7.
+		W unit at (3, 4) took 2 damage, health now 4.
+
+	Healings:
+		E unit at (1, 1) healed to 18 health.
+		F unit at (3, 3) healed to 5 health.
+		W unit at (4, 5) healed to 4 health.
+		A unit at (4, 4) healed to 4 health.
+		W unit at (3, 4) healed to 6 health.
+		F unit at (4, 3) healed to 2 health.
+
+	No deaths, grid stays the same.
+
+ROUND 3:
+	After windrush:
+		Unit A moved from (2, 5) to (2, 4)
+	E . . . . . . .
+	E E . . . . . .
+	. E F . A . . .
+	. . F F W . . .
+	. . . F A W . .
+	. . . . W . A .
+	. . . . . W . .
+	. . . . . . A .
+
+		
+		E unit at (0, 0) has no valid targets.
+		E unit at (1, 1) has no valid targets.
+		E unit at (1, 0) has no valid targets.
+
+		F unit at (3, 3) has health 5/12 and skips attacking to heal.
+		W unit at (4, 5) has health 4/14 and skips attacking to heal.
+		A unit at (4, 4) has health 4/10 and skips attacking to heal.
+		W unit at (3, 4) has health 6/14 and skips attacking to heal.
+		F unit at (4, 3) has health 2/12 and skips attacking to heal.
+		W unit at (5, 4) has health 6/14 and skips attacking to heal.
+		W unit at (6, 5) has health 6/14 and skips attacking to heal.
+		A unit at (7, 6) has health 4/10 and skips attacking to heal.
+
+		F unit at (2, 2) attacking (1, 1) with 4 damage.
+		F unit at (2, 2) attacking (2, 1) with 4 damage.
+
+		A unit at (5, 6) attacking (4, 5) with 2 damage.
+		A unit at (5, 6) attacking (5, 4) with 2 damage.
+		A unit at (5, 6) attacking (6, 5) with 2 damage.
+
+		E unit at (2, 1) attacking (2, 2) with 2 damage.
+
+		F unit at (3, 2) attacking (2, 1) with 4 damage.
+
+		A unit at (2, 4) attacking (3, 3) with 2 damage.
+		A unit at (2, 4) attacking (3, 4) with 2 damage.
+		A unit at (2, 4) attacking (2, 2) with 2 damage.
+
+	Health reducements:
+
+		E unit at (1, 1) took 4//2 damage, health now 16.
+		E unit at (2, 1) took 8//2 damage, health now 6.
+		W unit at (4, 5) took 2 damage, health now 2.
+		W unit at (5, 4) took 2 damage, health now 4.
+		W unit at (6, 5) took 2 damage, health now 4.
+		F unit at (2, 2) took 4 damage, health now 4.
+		F unit at (3, 3) took 2 damage, health now 3.
+		W unit at (3, 4) took 2 damage, health now 4.
+
+	Healings:	
+		E unit at (1, 1) healed to 18 health.
+		F unit at (3, 3) healed to 4 health.
+		W unit at (4, 5) healed to 4 health.
+		A unit at (4, 4) healed to 6 health.
+		W unit at (3, 4) healed to 6 health.
+		F unit at (4, 3) healed to 3 health.
+		W unit at (5, 4) healed to 6 health.
+		W unit at (6, 5) healed to 6 health.
+		A unit at (7, 6) healed to 6 health.
+
+	No deaths, grid stays the same.
+
+ROUND 4:
+	After windrush:
+		Unit A moved from (2, 4) to (2, 3)
+	E . . . . . . .
+	E E . . . . . .
+	. E F A . . . .
+	. . F F W . . .
+	. . . F A W . .
+	. . . . W . A .
+	. . . . . W . .
+	. . . . . . A .
+		
+		
+		E unit at (0, 0) has no valid targets.
+		E unit at (1, 1) has no valid targets.
+		E unit at (1, 0) has no valid targets.	
+
+		F unit at (2, 2) has health 4/12 and skips attacking to heal.
+		F unit at (3, 3) has health 4/12 and skips attacking to heal.
+		W unit at (4, 5) has health 4/14 and skips attacking to heal.
+		W unit at (3, 4) has health 6/14 and skips attacking to heal.
+		E unit at (2, 1) has health 6/18 and skips attacking to heal.
+		F unit at (4, 3) has health 3/12 and skips attacking to heal.
+		W unit at (5, 4) has health 6/14 and skips attacking to heal.
+		W unit at (6, 5) has health 6/14 and skips attacking to heal.
+
+		A unit at (4, 4) attacking (3, 4) with 2 damage.
+		A unit at (4, 4) attacking (4, 3) with 2 damage.
+		A unit at (4, 4) attacking (5, 4) with 2 damage.
+		A unit at (4, 4) attacking (4, 5) with 2 damage.
+		A unit at (4, 4) attacking (3, 3) with 2 damage.
+
+		A unit at (5, 6) attacking (4, 5) with 2 damage.
+		A unit at (5, 6) attacking (5, 4) with 2 damage.
+		A unit at (5, 6) attacking (6, 5) with 2 damage.
+
+		F unit at (3, 2) attacking (2, 3) with 4 damage.
+		F unit at (3, 2) attacking (2, 1) with 4 damage.
+
+		A unit at (7, 6) attacking (8, 2) with 2 damage.
+		A unit at (7, 6) attacking (6, 5) with 2 damage.
+		A unit at (7, 6) attacking (8, 1) with 2 damage.
+
+		A unit at (2, 3) attacking (3, 2) with 2 damage.
+		A unit at (2, 3) attacking (3, 3) with 2 damage.
+		A unit at (2, 3) attacking (3, 4) with 2 damage.
+		A unit at (2, 3) attacking (2, 2) with 2 damage.
+
+	Health reducements:
+		W unit at (3, 4) took 4 damage, health now 2.
+		F unit at (4, 3) took 2 damage, health now 1.
+		W unit at (5, 4) took 4 damage, health now 2.
+		W unit at (4, 5) took 4 damage, health now 0.
+		F unit at (3, 3) took 4 damage, health now 0.
+		W unit at (6, 5) took 4 damage, health now 2.
+		A unit at (2, 3) took 4 damage, health now 6.
+		E unit at (2, 1) took 4//2 damage, health now 4.
+		F unit at (3, 2) took 2 damage, health now 10.
+		F unit at (2, 2) took 2 damage, health now 2.
+
+	After deaths:
+		F unit at (3, 3) has died.
+		W unit at (4, 5) has died.
+	E . . . . . . .
+	E E . . . . . .
+	. E F A . . . .
+	. . F . W . . .
+	. . . F A . . .
+	. . . . W . A .
+	. . . . . W . .
+	. . . . . . A .
+
+	Healings:
+		F unit at (2, 2) healed to 3 health.
+		W unit at (3, 4) healed to 4 health.
+		E unit at (2, 1) healed to 7 health.
+		F unit at (4, 3) healed to 2 health.
+		W unit at (5, 4) healed to 4 health.
+		W unit at (6, 5) healed to 4 health.
+
+	End of the wave actions:
+		Fire unit at (2, 2) reset attack power to 4.
+		Fire unit at (2, 2) reset attack power to 4.
+		Fire unit at (3, 2) reset attack power to 4.
+		Fire unit at (3, 2) reset attack power to 4.
+		Fire unit at (4, 3) reset attack power to 4.
+		Fire unit at (4, 3) reset attack power to 4.
+
+		
+		Flood ability: (3, 4) Converted neutral cell (2, 4) into a Water unit.
+			W unit created at (2, 4) with health=14, attack_power=3
+		Flood ability: (5, 4) Converted neutral cell (4, 5) into a Water unit.
+			W unit created at (4, 5) with health=14, attack_power=3
+		Flood ability: (6, 5) Converted neutral cell (5, 5) into a Water unit.
+			W unit created at (5, 5) with health=14, attack_power=3
+
+	After floods:
+	E . . . . . . .
+	E E . . . . . .
+	. E F A W . . .
+	. . F . W . . .
+	. . . F A W . .
+	. . . . W W A .
+	. . . . . W . .
+	. . . . . . A .
+
+All waves completed.
+

@@ -19,9 +19,12 @@ class Unit:
         Check if the unit is still alive.
         """
         return self.health > 0
+    
+    def can_attack(self):
+        return self.health >= self.max_health // 2
 
     def __str__(self):
-        return ((str)(self.unit_type) + (str)(self.attack_power))
+        return self.unit_type + str(self.health)
 
     def heal(self):
         return
@@ -125,6 +128,7 @@ class AirUnit(Unit):
         self.x , self.y = new_coordinates
     def unite(self, air_unit):
         self.health = min(10, self.health + air_unit.health)
+        self.attack_power += air_unit.attack_power
 
     def heal(self):
         self.health = min(10, self.health + self.healing_rate)

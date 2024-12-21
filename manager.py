@@ -13,6 +13,12 @@ class Manager:
         self.worker_count = worker_count  # Number of workers (manager excluded)
         with open(input_file, "r") as file:
             self.lines = file.readlines()
+        
+        try:
+            self.output = open(output_file, "w")
+        except:
+            self.output = open("output.txt", "x")
+
     
     def parse_wave_data(self, lines):
         wave_data = {}
@@ -138,7 +144,7 @@ class Manager:
         finalGrid = [['.' for _ in range(Utils.N)] for _ in range(Utils.N)]
         # Instruct each worker to send its final block
         for rank in range(1, self.worker_count + 1):
-            comm.send({'state': 10}, dest=rank, tag=10)
+            comm.send({'state': 13}, dest=rank, tag=10)
             block = comm.recv(source=rank, tag=10)
             # Merge block content into finalGrid
             for row_idx in range(block.top_left[0], block.bottom_right[0]):
@@ -147,8 +153,10 @@ class Manager:
                         block.grid[row_idx - block.top_left[0]][col_idx - block.top_left[1]]
                     )
         for row in finalGrid:
-            print(row)
-        print()
+            for cell in row:
+                print(cell.ljust(4, ' '), end="", file=self.output)
+            print(file=self.output)
+        print(file=self.output)
 
     def run(self):
         """
@@ -188,7 +196,6 @@ class Manager:
         self.send_blocks()
 
         for wave_idx in range(1, Utils.W + 1):
-            print(f"Wave {wave_idx}")
             wave = self.wave_data[wave_idx]
 
             blocks = [{} for _ in range(self.worker_count)]
@@ -203,8 +210,9 @@ class Manager:
                     found_id = Utils.coordinates_to_block_id(coord[0], coord[1])
                     blocks[found_id - 1]['units'].append((faction, coord[0], coord[1]))
 
+            
+
             self.send_units(blocks)
-            self.gather_grids_and_print()
 
             # 6) Run R rounds with a 2x2 checkerboard scheme
             for _ in range(Utils.R):
@@ -225,7 +233,22 @@ class Manager:
                             if not current_workers[rank - 1]:
                                 comm.send(None, dest=rank, tag=69)
 
-                print("Round is starting")
+                for x in range(2):
+                    for y in range(2):
+                        current_workers = self.set_current_workers(x, y)
+                        # State to active: 4, inactive: 5
+                        self.set_states([10, 11], current_workers, x * 2 + y)
+                        # Wait for active workers
+                        for rank in range(1, self.worker_count + 1):
+                            if current_workers[rank - 1]:
+                                comm.recv(source=rank, tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])
+                        # Send "continue" or "skip" (tag=70)
+                        for rank in range(1, self.worker_count + 1):
+                            if not current_workers[rank - 1]:
+                                comm.send(None, dest=rank, tag=72)
+
+                current_workers = [True] * self.worker_count
+                self.set_states([12, 12], current_workers, -1)
 
                 # --- Active time 2 (checkerboard step) ---
                 for x in range(2):
@@ -244,18 +267,12 @@ class Manager:
                             if not current_workers[rank - 1]:
                                 comm.send(None, dest=rank, tag=70)
 
-                print("Attack is done")
                 current_workers = [True] * self.worker_count
                 self.set_states([6, 6], current_workers, -1)
-
-                self.gather_grids_and_print()
-
                 self.set_states([7, 7], current_workers, -1)
-
-                print("Healing is done")
+                
+                print(f"Wave {wave_idx} Round {_}", file=self.output)
                 self.gather_grids_and_print()
-                print("Round is done")
-                print()
 
             for x in range(2):
                 for y in range(2):
@@ -270,8 +287,12 @@ class Manager:
                     for rank in range(1, self.worker_count + 1):
                         if not current_workers[rank - 1]:
                             comm.send(None, dest=rank, tag=71)
-                
-            
+
+            current_workers = [True] * self.worker_count
+            self.set_states([21, 21], current_workers, -1)
+
+            self.gather_grids_and_print()
+    
 
         for rank in range(1, self.worker_count + 1):
             comm.send({'state': -1}, dest=rank, tag=10)

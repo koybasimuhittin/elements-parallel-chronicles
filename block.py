@@ -80,7 +80,7 @@ class Block:
     def reset_boundary(self):
         for i in range(self.size[1]):
             for j in range(self.size[0]):
-                self.grid_with_boundary[i + 3][j + 3] = self.grid[i][j]
+                self.grid_with_boundary[i + 3][j + 3] = self.grid[i][j].unit_type if self.grid[i][j] != "." else "."
 
     
     def add_units(self, units):

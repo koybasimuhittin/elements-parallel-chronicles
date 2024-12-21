@@ -89,6 +89,10 @@ class Worker:
                 self.state = 0
 
             elif self.state == 20:
+                self.receive_units()
+                self.state = 0
+            
+            elif self.state == 21:
                 for x, y in self.new_water_units:
                     grid_x, grid_y = self.block.get_block_coordinates(x, y)
                     self.block.grid[grid_x][grid_y] = WaterUnit(x, y)
@@ -101,10 +105,6 @@ class Worker:
                             fire_unit = self.block.grid[i][j]
                             if fire_unit.unit_type == 'F':
                                 fire_unit.reset_inferno()
-
-                self.receive_units()
-                self.state = 0
-
             # 2) Worker becomes "receiver" of boundary data
             elif self.state == 2:
                 self.block.reset_boundary()
@@ -202,6 +202,7 @@ class Worker:
                             if air_unit.unit_type == 'A':
                                 new_coordinates = self.air_movement(air_unit)
                                 air_unit.change_position(new_coordinates)
+                                print(print_grid(self.block.grid_with_boundary, self.rank))
                                 if self.block.is_coordinate_inside(new_coordinates[0], new_coordinates[1]):
                                     self.new_air_units.append(air_unit)
                                 else:
@@ -212,10 +213,16 @@ class Worker:
                             air_unit = self.block.grid[i][j]
                             if air_unit.unit_type == 'A':
                                 self.block.grid[i][j] = '.'  # remove the air unit
+                
+                comm.send(MESSAGES['ACTIVE_TIME_DONE']['message'],
+                          dest=MESSAGES['ACTIVE_TIME_DONE']['dest'],
+                          tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])
                 self.state = 0
+
             elif self.state == 11:
                 self.take_air_unit()
                 self.state = 0
+
             elif self.state == 12:
                 for air_unit in self.new_air_units:
                     x,y = self.block.get_block_coordinates(air_unit.x,air_unit.y)
@@ -224,20 +231,16 @@ class Worker:
                         self.block.grid[x][y]=air_unit
                     else:
                         self.block.grid[x][y].unite(air_unit)
-
-
+                
+                self.new_air_units.clear()
+                self.state = 0
 
             # Anything else or termination
             elif self.state == 13:
                 # Send block back to manager (for final collection)
                 comm.send(self.block, dest=0, tag=10)
 
-
-
-
-
             elif self.state == -1:
-                print(f"Worker {self.rank}: Terminating.")
                 break
 
     def create_water_unit(self, water_unit: WaterUnit):
@@ -295,15 +298,16 @@ class Worker:
             for dx, dy in unit.directions:
                 nx, ny = x + dx, y + dy
                 if 0 <= nx < Utils.N and 0 <= ny < Utils.N:
-                    enemy = self.block.get_grid_element(nx, ny)
+                    enemy = self.block.get_grid_with_boundary_element(nx, ny)
                     if enemy == '.':
                         new_x, new_y = nx + dx, ny + dy
                         if 0 <= new_x < Utils.N and 0 <= new_y < Utils.N:
-                            new_enemy = self.block.get_grid_element(new_x, new_y)
-                            if new_enemy != '.' or new_enemy.unit_type != 'A':
+                            new_enemy = self.block.get_grid_with_boundary_element(new_x, new_y)
+                            if new_enemy != '.' and new_enemy != 'A':
                                 cnt += 1
-                    elif enemy.unit_type != 'A':
+                    elif enemy != 'A':
                         cnt += 1
+
             return cnt
 
         new_coordinates = (unit.x, unit.y)
@@ -312,6 +316,8 @@ class Worker:
         for dx, dy in directions:
             nx, ny = unit.x + dx, unit.y + dy
             if 0 <= nx < Utils.N and 0 <= ny < Utils.N:
+                if self.block.get_grid_with_boundary_element(nx, ny) != '.':
+                    continue
                 number_of_enemies = calculate_number_of_enemies(nx, ny)
                 if number_of_enemies > max_enemies:
                     new_coordinates = (nx, ny)
@@ -351,6 +357,9 @@ class Worker:
         For example, each unit might have 'directions' indicating adjacent cells.
         If it's an Air unit, it may have extended range, etc.
         """
+
+        if(not unit.can_attack()):
+            return
 
         def attack_coord(x, y):
             # If within the global grid
