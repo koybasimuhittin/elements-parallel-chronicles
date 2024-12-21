@@ -1,5 +1,6 @@
-
 import utils
+
+
 class Unit:
     """
     Base class for a unit on the battlefield.
@@ -13,8 +14,8 @@ class Unit:
         self.health = max_health  # Current health points
         self.attack_power = attack_power  # Attack damage
         self.healing_rate = healing_rate  # Healing rate when not attacking
-        self.damage_taken=0
-        self.attack_done=False
+        self.damage_taken = 0
+        self.attack_done = False
 
     def is_alive(self):
         """
@@ -24,6 +25,9 @@ class Unit:
 
     def __str__(self):
         return ((str)(self.unit_type) + (str)(self.health))
+
+    def heal(self):
+        return
 
 
 class EarthUnit(Unit):
@@ -39,8 +43,7 @@ class EarthUnit(Unit):
         """
         Reduce incoming damage by 50% (rounded down).
         """
-        self.damage_taken =  max(0, self.damage_taken // 2)
-
+        self.damage_taken = max(0, self.damage_taken // 2)
 
     def heal(self):
         self.health = min(18, self.health + self.healing_rate)
@@ -56,7 +59,7 @@ class FireUnit(Unit):
         self.base_attack_power = 4
         self.attack_power = self.base_attack_power
         self.inferno_triggered = False
-        self.directions= [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
+        self.directions = [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
 
     def inferno(self):
         if not self.inferno_triggered and self.attack_power < 6:
@@ -66,7 +69,6 @@ class FireUnit(Unit):
 
     def reset_inferno(self):
         self.inferno_triggered = False
-
 
     def heal(self):
         self.health = min(12, self.health + self.healing_rate)
@@ -79,7 +81,7 @@ class WaterUnit(Unit):
 
     def __init__(self, x, y):
         super().__init__(unit_type="W", x=x, y=y, max_health=14, attack_power=3, healing_rate=2)
-        self.directions= [(-1, -1), (1, 1), (-1, 1), (1, -1)]
+        self.directions = [(-1, -1), (1, 1), (-1, 1), (1, -1)]
 
     # def flood(self, battlefield):
     #     neutral_cells = []
@@ -145,5 +147,3 @@ class AirUnit(Unit):
 
     def heal(self):
         self.health = min(10, self.health + self.healing_rate)
-
-

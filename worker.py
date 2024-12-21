@@ -7,6 +7,7 @@ from constants import MESSAGES
 
 comm = MPI.COMM_WORLD
 
+
 def print_grid(grid):
     """
     Helper function to convert a 2D grid into a string for debugging.
@@ -170,25 +171,16 @@ class Worker:
                 break
 
     def apply_damage(self, coordinates, unit: Unit):
-        """
-        Send an attack to another block's worker to see if it lands.
-        Returns True if the attack was successful, False otherwise.
-        """
         dest_block_id = Utils.coordinates_to_block_id(
             coordinates[0], coordinates[1], Utils.N, Utils.worker_count
         )
-        comm.send([coordinates, unit.attack_power, unit.unit_type, self.rank],
+        comm.send([coordinates, unit.attack_power, unit.unit_type, unit.x, unit.y, self.rank],
                   dest=dest_block_id, tag=70)
         # Wait for confirmation (True = damage applied, False = blocked)
         success = comm.recv(source=dest_block_id, tag=70)
         return success
 
     def take_damage(self):
-        """
-        Wait for incoming attack messages (tag=70).
-        - If we receive None, it means no more attacks are pending.
-        - Otherwise, apply damage to the local unit if it’s a valid target.
-        """
         while True:
             data = comm.recv(source=MPI.ANY_SOURCE, tag=70)
             if data is None:
@@ -196,15 +188,17 @@ class Worker:
                 self.state = 0
                 return
 
-            coord, damage, enemy_type, attacker_rank = data
+            coord, damage, enemy_type, attacker_x, attacker_y, attacker_rank = data
             local_unit = self.block.get_grid_element(coord[0], coord[1])
             # If the cell is empty or matches the enemy's faction, it's a valid target
-            if (local_unit == "." or local_unit.unit_type == enemy_type):
+            if local_unit == "." or local_unit.unit_type == enemy_type:
                 # Attack is blocked (friendly or invalid target)
                 comm.send(False, dest=attacker_rank, tag=70)
             else:
                 # Apply damage
                 local_unit.damage_taken += damage
+                if enemy_type == 'F':
+                    local_unit.fire_attackers.append((attacker_x,attacker_y))
                 comm.send(True, dest=attacker_rank, tag=70)
 
     def attack(self, unit: Unit):
@@ -213,6 +207,7 @@ class Worker:
         For example, each unit might have 'directions' indicating adjacent cells.
         If it's an Air unit, it may have extended range, etc.
         """
+
         def attack_coord(x, y):
             # If within the global grid
             if 0 <= x < Utils.N and 0 <= y < Utils.N:
@@ -223,6 +218,8 @@ class Worker:
                     # If target cell is not empty AND is a different faction
                     if not (local_unit == "." or local_unit.unit_type == unit.unit_type):
                         local_unit.damage_taken += unit.attack_power
+                        if unit.unit_type == 'F':
+                            local_unit.fire_attackers.append((unit.x, unit.y))
                         unit.attack_done = True
                         return True
                 else:
