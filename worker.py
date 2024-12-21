@@ -191,8 +191,6 @@ class Worker:
             else:
                 # Apply damage
                 local_unit.damage_taken += damage
-                if enemy_type == 'F':
-                    local_unit.fire_attackers.append((attacker_x,attacker_y))
                 comm.send(True, dest=attacker_rank, tag=70)
 
     def attack(self, unit: Unit):
@@ -211,8 +209,6 @@ class Worker:
                     # If target cell is not empty AND is a different faction
                     if not (local_unit == "." or local_unit.unit_type == unit.unit_type):
                         local_unit.damage_taken += unit.attack_power
-                        if unit.unit_type == 'F':
-                            local_unit.fire_attackers.append((unit.x, unit.y))
                         unit.attack_done = True
                         return True
                 else:
@@ -226,6 +222,8 @@ class Worker:
         for dx, dy in unit.directions:
             nx, ny = unit.x + dx, unit.y + dy
             did_attack = attack_coord(nx, ny)
+            if unit.unit_type == 'F':
+                unit.enemies_attacked.append((nx, ny))
 
             # Example: Air unit can "pierce" one more cell
             if not did_attack and unit.unit_type == 'A':

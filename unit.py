@@ -13,7 +13,6 @@ class Unit:
         self.healing_rate = healing_rate  # Healing rate when not attacking
         self.damage_taken = 0
         self.attack_done = False
-        self.fire_attackers = []
 
     def is_alive(self):
         """
@@ -56,6 +55,7 @@ class FireUnit(Unit):
         super().__init__(unit_type="F", x=x, y=y, max_health=12, attack_power=4, healing_rate=1)
         self.base_attack_power = 4
         self.attack_power = self.base_attack_power
+        self.enemies_attacked = []
         self.inferno_triggered = False
         self.directions = [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
 
