@@ -64,7 +64,7 @@ class FireUnit(Unit):
     def inferno(self):
         if self.attack_power < 6:
             self.attack_power += 1
-            print(f"Inferno activated! Attack power increased to {self.attack_power}.")
+            #print(f"Inferno activated! Attack power increased to {self.attack_power}.")
 
     def reset_inferno(self):
         self.attack_power = self.base_attack_power
@@ -75,6 +75,9 @@ class FireUnit(Unit):
 
     def heal(self):
         self.health = min(12, self.health + self.healing_rate)
+
+    def __str__(self):
+        return str(self.attack_power)
 
 
 class WaterUnit(Unit):
@@ -125,6 +128,7 @@ class AirUnit(Unit):
         self.directions = [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
 
     def change_position(self,new_coordinates):
+        #print(str(self.x),str(self.y) + " to "+ str(new_coordinates))
         self.x , self.y = new_coordinates
     def unite(self, air_unit):
         self.health = min(10, self.health + air_unit.health)

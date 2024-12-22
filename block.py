@@ -26,6 +26,9 @@ class Block:
     
     def get_grid_with_boundary_element(self, x, y):
         return self.grid_with_boundary[x - self.top_left[0] + 3][y - self.top_left[1] + 3]
+
+    def set_grid_with_boundary_element(self, x, y ,el):
+        self.grid_with_boundary[x - self.top_left[0] + 3][y - self.top_left[1] + 3] = el
     
     def update_boundary(self, boundary, position):
         # add 3x3 boundary to the top left corner

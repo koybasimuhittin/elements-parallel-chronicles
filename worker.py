@@ -154,6 +154,8 @@ class Worker:
                                 unit: EarthUnit
                                 unit.fortify()
 
+
+
                             # Apply accumulated damage
                             unit.health -= unit.damage_taken
                             unit.damage_taken = 0
@@ -169,6 +171,7 @@ class Worker:
                     for j in range(len(self.block.grid[0])):
                         if self.block.grid[i][j] != '.':
                             unit = self.block.grid[i][j]
+
                             # If the unit hasn't attacked yet, it can heal
                             if not unit.attack_done:
                                 unit.heal()
@@ -202,7 +205,7 @@ class Worker:
                             if air_unit.unit_type == 'A':
                                 new_coordinates = self.air_movement(air_unit)
                                 air_unit.change_position(new_coordinates)
-                                print(print_grid(self.block.grid_with_boundary, self.rank))
+                                #print(print_grid(self.block.grid_with_boundary, self.rank))
                                 if self.block.is_coordinate_inside(new_coordinates[0], new_coordinates[1]):
                                     self.new_air_units.append(air_unit)
                                 else:
@@ -313,6 +316,7 @@ class Worker:
         new_coordinates = (unit.x, unit.y)
         max_enemies = calculate_number_of_enemies(unit.x, unit.y)
         directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+        self.block.set_grid_with_boundary_element(unit.x,unit.y,'.')
         for dx, dy in directions:
             nx, ny = unit.x + dx, unit.y + dy
             if 0 <= nx < Utils.N and 0 <= ny < Utils.N:
@@ -322,6 +326,7 @@ class Worker:
                 if number_of_enemies > max_enemies:
                     new_coordinates = (nx, ny)
                     max_enemies = number_of_enemies
+        self.block.set_grid_with_boundary_element(unit.x, unit.y, 'A')
         return new_coordinates
 
     def apply_damage(self, coordinates, unit: Unit):
@@ -345,11 +350,14 @@ class Worker:
             # If the cell is empty or matches the enemy's faction, it's a valid target
             if local_unit == "." or local_unit.unit_type == enemy_type:
                 # Attack is blocked (friendly or invalid target)
-                comm.send(False, dest=attacker_rank, tag=70)
+                if local_unit == ".":
+                    comm.send(0, dest=attacker_rank, tag=70)
+                else:
+                    comm.send(1, dest=attacker_rank, tag=70)# there is a friend
             else:
                 # Apply damage
                 local_unit.damage_taken += damage
-                comm.send(True, dest=attacker_rank, tag=70)
+                comm.send(2, dest=attacker_rank, tag=70)
 
     def attack(self, unit: Unit):
         """
@@ -371,23 +379,28 @@ class Worker:
                     if not (local_unit == "." or local_unit.unit_type == unit.unit_type):
                         local_unit.damage_taken += unit.attack_power
                         unit.attack_done = True
-                        return True
+                        return 2
+                    elif local_unit != ".":
+                        return 1
                 else:
                     # Otherwise, send damage to another block
-                    if self.apply_damage((x, y), unit):
+                    number = self.apply_damage((x, y), unit)
+                    if number == 2:
                         unit.attack_done = True
-                        return True
-            return False
+                        return 2
+                    elif number == 1:
+                        return 1 # The grid is full
+            return 0
 
         # Attack each direction once; if Air unit, it may continue
         for dx, dy in unit.directions:
             nx, ny = unit.x + dx, unit.y + dy
             did_attack = attack_coord(nx, ny)
-            if did_attack and unit.unit_type == 'F':
+            if did_attack == 2 and unit.unit_type == 'F':
                 unit.enemies_attacked.append((nx, ny))
 
             # Example: Air unit can "pierce" one more cell
-            if not did_attack and unit.unit_type == 'A':
+            if did_attack == 0 and unit.unit_type == 'A':
                 nx2, ny2 = nx + dx, ny + dy
                 attack_coord(nx2, ny2)
 
@@ -396,7 +409,6 @@ class Worker:
         def is_inferno_available(unit: FireUnit):
             for [row, column] in unit.enemies_attacked:
                 enemy = self.block.get_grid_with_boundary_element(row, column)
-                print(unit.x, unit.y, row, column, enemy)
                 if enemy == '.':
                     return True
 
