@@ -2,13 +2,10 @@ from mpi4py import MPI
 import sys
 from manager import Manager
 from worker import Worker
-import time
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
-
-start_time = time.time()
 
 if(len(sys.argv) < 2):
     input_file = "input.txt"
@@ -27,9 +24,6 @@ if rank == 0:
 else:
     workers[rank - 1].run()
 
-end_time = time.time()  
-
-print("Rank", rank, "took", (end_time - start_time), "seconds to run.")
 
 
     
