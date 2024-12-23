@@ -123,7 +123,13 @@ class Worker:
                 for neighbor in self.block.adjacent_blocks:
                     # Only send to neighbors that are also in the active checkerboard group
                     if Utils.is_current_worker(neighbor['block_id'], current_group):
-                        comm.send({'grid': self.extract_block(neighbor['position']), 'position': neighbor['position']},
+                        extracted_data = self.extract_block(neighbor['position'])
+
+                        for i in range(len(extracted_data)):
+                            for j in range(len(extracted_data[0])):
+                                if extracted_data[i][j] != '.':
+                                    extracted_data[i][j] = extracted_data[i][j].unit_type
+                        comm.send({'grid': extracted_data, 'position': neighbor['position']},
                                   dest=neighbor['block_id'], tag=10)
                 self.state = 0
 

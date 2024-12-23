@@ -1,6 +1,6 @@
 import re
 from block import Block
-from utils import Utils  # <-- Import the Utils class properly
+from utils import Utils
 from mpi4py import MPI
 from constants import MESSAGES
 
@@ -10,7 +10,7 @@ class Manager:
     def __init__(self, input_file, output_file, worker_count):
         self.input_file = input_file
         self.output_file = output_file
-        self.worker_count = worker_count  # Number of workers (manager excluded)
+        self.worker_count = worker_count 
         with open(input_file, "r") as file:
             self.lines = file.readlines()
         
@@ -37,11 +37,7 @@ class Manager:
                 wave_data[wave_index][faction] = coords
         return wave_data
 
-    def generate_blocks(self, n, block_sizes):
-        """
-        Create blocks with top-left/bottom-right boundaries,
-        populate them with wave units, and call fill_grid().
-        """
+    def generate_blocks(self, block_sizes):
         blocks = []
         block_ids = []
         block_id = 1
@@ -56,7 +52,6 @@ class Manager:
                     block_top_left[0] + height,
                     block_top_left[1] + width
                 )
-                # Create a new Block
                 blocks.append(
                     Block(
                         {"E": [], "F": [], "W": [], "A": []},
@@ -69,9 +64,7 @@ class Manager:
                 )
                 block_ids[i].append(block_id)
                 block_id += 1
-                # Move our top_left horizontally
                 block_top_left = (block_top_left[0], block_top_left[1] + width)
-            # After finishing row j, move top_left vertically
             top_left = (top_left[0] + block_sizes[i][0][1], top_left[1])
 
         return blocks, block_ids
@@ -94,29 +87,19 @@ class Manager:
                             'position': k,
                             'relative_position': (dx[k], dy[k])
                         })
-                # Assign adjacent blocks to the correct block
                 blocks[block_ids[i][j] - 1].adjacent_blocks = adjacent_blocks
 
     def send_blocks(self):
-        """
-        Sends the fully prepared block objects to each worker.
-        """
         for b in self.blocks:
             comm.send({'state': 1}, dest=b.id, tag=10)
             comm.send(b, dest=b.id, tag=1)
 
     def send_units(self, blocks):
-        """
-        Sends the units to the correct block.
-        """
         for i in range(len(blocks)):
             comm.send({'state': 20}, dest=i + 1, tag=10)
             comm.send(blocks[i]['units'], dest=i + 1, tag=2)
 
     def set_states(self, states, workers, worker_group):
-        """
-        Sends two different states: one to active workers, one to inactive.
-        """
         for rank in range(1, self.worker_count + 1):
             if workers[rank - 1]:
                 comm.send({'state': states[0], 'current_worker_group': worker_group}, dest=rank, tag=10)
@@ -124,10 +107,6 @@ class Manager:
                 comm.send({'state': states[1], 'current_worker_group': worker_group}, dest=rank, tag=10)
 
     def set_current_workers(self, x, y):
-        """
-        Depending on (x, y) in {0,1}, sets a checkerboard pattern of active workers.
-        If (x, y) == (-1, -1), all workers are active.
-        """
         sqr_of_worker = int(self.worker_count ** 0.5)
         if x == -1 and y == -1:
             return [True] * self.worker_count
@@ -140,13 +119,10 @@ class Manager:
         return current_workers
     
     def gather_grids_and_print(self):
-        # 7) Gather final grid state
         finalGrid = [['.' for _ in range(Utils.N)] for _ in range(Utils.N)]
-        # Instruct each worker to send its final block
         for rank in range(1, self.worker_count + 1):
             comm.send({'state': 13}, dest=rank, tag=10)
             block = comm.recv(source=rank, tag=10)
-            # Merge block content into finalGrid
             for row_idx in range(block.top_left[0], block.bottom_right[0]):
                 for col_idx in range(block.top_left[1], block.bottom_right[1]):
                     finalGrid[row_idx][col_idx] = str(
@@ -154,25 +130,13 @@ class Manager:
                     )
         for row in finalGrid:
             for cell in row:
-                print(cell.ljust(4, ' '), end="", file=self.output)
+                print(cell.ljust(2, ' '), end="", file=self.output)
             print(file=self.output)
         print(file=self.output)
 
     def run(self):
-        """
-        Main run logic:
-        1) Parse general info (N, W, T, R).
-        2) Calculate block sizes.
-        3) Parse wave data and generate blocks for each wave.
-        4) Send blocks to workers.
-        5) Receive "blocks received" confirmations.
-        6) Run R rounds of simulation with a 2x2 checkerboard scheme.
-        7) Collect final grids and print.
-        """
-        # 1) Parse the general info into Utils class-level variables
         Utils.parse_general_info(self.lines)
-        
-        # 2) Broadcast config to all ranks
+
         config_data = {
             'N': Utils.N,
             'W': Utils.W,
@@ -181,17 +145,11 @@ class Manager:
         }
         comm.bcast(config_data, root=0)
 
-
-        # 2) Calculate block sizes
         self.block_sizes = Utils.calculate_block_sizes(Utils.N, self.worker_count)
 
-        # 3) Parse wave data
         self.wave_data = self.parse_wave_data(self.lines)
 
-        self.blocks, self.block_ids = self.generate_blocks(
-                Utils.N, 
-                self.block_sizes
-            )
+        self.blocks, self.block_ids = self.generate_blocks(self.block_sizes)
         self.calculate_adjacent_blocks(self.block_ids, self.blocks)
         self.send_blocks()
 
@@ -204,7 +162,6 @@ class Manager:
 
             for faction in wave:
                 for coord in wave[faction]:
-                    # Use Utils to find the block ID from (x, y)
                     if(coord[0] < 0 or coord[1] < 0 or coord[0] >= Utils.N or coord[1] >= Utils.N):
                         continue
                     found_id = Utils.coordinates_to_block_id(coord[0], coord[1])
@@ -214,9 +171,7 @@ class Manager:
 
             self.send_units(blocks)
 
-            # 6) Run R rounds with a 2x2 checkerboard scheme
             for _ in range(Utils.R):
-                # --- Active time 1 (checkerboard step) ---
                 for x in range(2):      # x in {0,1}
                     for y in range(2):  # y in {0,1}
                         current_workers = self.set_current_workers(x, y)
@@ -228,10 +183,9 @@ class Manager:
                             if current_workers[rank - 1]:
                                 comm.recv(source=rank, tag=MESSAGES['ACTIVE_TIME_DONE']['tag'])
 
-                        # Send "continue" or "skip" (tag=69) for workers
                         for rank in range(1, self.worker_count + 1):
                             if not current_workers[rank - 1]:
-                                comm.send(None, dest=rank, tag=69)
+                                comm.send(None, dest=rank, tag=60)
 
                 for x in range(2):
                     for y in range(2):
@@ -270,9 +224,6 @@ class Manager:
                 current_workers = [True] * self.worker_count
                 self.set_states([6, 6], current_workers, -1)
                 self.set_states([7, 7], current_workers, -1)
-                
-                print(f"Wave {wave_idx} Round {_}", file=self.output)
-                self.gather_grids_and_print()
 
             for x in range(2):
                 for y in range(2):
@@ -291,21 +242,8 @@ class Manager:
             current_workers = [True] * self.worker_count
             self.set_states([21, 21], current_workers, -1)
 
-            self.gather_grids_and_print()
+        self.gather_grids_and_print()
     
 
         for rank in range(1, self.worker_count + 1):
             comm.send({'state': -1}, dest=rank, tag=10)
-
-
-    # Uncomment if you had some alternate run logic
-    # def run2(self):
-    #     for i in range(1, self.worker_count):
-    #         print(i)
-    #         for j in range(1, self.worker_count + 1):
-    #             comm.send(1 if i == j else 0, dest=j, tag=10)
-    #         comm.recv(source=i, tag=MPI.ANY_TAG)
-    #         for j in range(1, self.worker_count + 1):
-    #             comm.send(None, dest=j, tag=3)
-    #     for j in range(1, self.worker_count + 1):
-    #         comm.send(-1, dest=j, tag=10)
