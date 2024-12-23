@@ -88,11 +88,11 @@ class Worker:
                 self.receive_block()
                 self.state = 0
 
-            elif self.state == 20:
+            elif self.state == 20: # receive new units from manager
                 self.receive_units()
                 self.state = 0
             
-            elif self.state == 21:
+            elif self.state == 21: # new wave
                 for x, y in self.new_water_units:
                     grid_x, grid_y = self.block.get_block_coordinates(x, y)
                     self.block.grid[grid_x][grid_y] = WaterUnit(x, y)
@@ -232,7 +232,7 @@ class Worker:
                 self.take_air_unit()
                 self.state = 0
 
-            elif self.state == 12:
+            elif self.state == 12: # place the air units if they are on the same position unite them
                 for air_unit in self.new_air_units:
                     x,y = self.block.get_block_coordinates(air_unit.x,air_unit.y)
                     new_position=self.block.get_grid_element(air_unit.x,air_unit.y)
@@ -251,7 +251,7 @@ class Worker:
 
             elif self.state == -1:
                 break
-
+    # creates water unit in an empty cell
     def create_water_unit(self, water_unit: WaterUnit):
         directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
         for dx, dy in directions:
@@ -266,12 +266,14 @@ class Worker:
                     if is_creation_successful:
                         break
 
+    # sends water units to the neighbouring process
     def send_water_unit(self, x, y):
         dest_block_id = Utils.coordinates_to_block_id(x, y)
         comm.send([x, y, self.rank], dest=dest_block_id, tag=71)
         success = comm.recv(source=dest_block_id, tag=71)
         return success
 
+    # takes water units from a neighbouring process
     def take_water_unit(self):
         while True:
             data = comm.recv(source=MPI.ANY_SOURCE, tag=71)
@@ -288,10 +290,12 @@ class Worker:
             else:
                 comm.send(False, dest=sender_rank, tag=71)
 
+    # sends air units to the neighbouring process
     def send_air_unit(self, air_unit):
         dest_block_id = Utils.coordinates_to_block_id(air_unit.x, air_unit.y)
         comm.send(air_unit, dest=dest_block_id, tag=72)
 
+    # takes air units from a neighbouring process
     def take_air_unit(self):
         while True:
             air_unit = comm.recv(source=MPI.ANY_SOURCE, tag=72)
@@ -301,7 +305,9 @@ class Worker:
 
             self.new_air_units.append(air_unit)
 
+    #calculates the new position of the air unit
     def air_movement(self, unit: AirUnit):
+        #calculates the number of enemies in range for a given point
         def calculate_number_of_enemies(x, y):
             cnt = 0
             for dx, dy in unit.directions:
@@ -335,11 +341,12 @@ class Worker:
         self.block.set_grid_with_boundary_element(unit.x, unit.y, 'A')
         return new_coordinates
 
+    # attacks an enemy in the neighbour process
     def apply_damage(self, coordinates, unit: Unit):
         dest_block_id = Utils.coordinates_to_block_id(coordinates[0], coordinates[1])
         comm.send([coordinates, unit.attack_power, unit.unit_type, unit.x, unit.y, self.rank],
                   dest=dest_block_id, tag=70)
-        # Wait for confirmation (True = damage applied, False = blocked)
+        # Wait for confirmation (2 = damage applied, 1 = same faction, 0 = empty cell)
         success = comm.recv(source=dest_block_id, tag=70)
         return success
 
@@ -359,12 +366,13 @@ class Worker:
                 if local_unit == ".":
                     comm.send(0, dest=attacker_rank, tag=70)
                 else:
-                    comm.send(1, dest=attacker_rank, tag=70)# there is a friend
+                    comm.send(1, dest=attacker_rank, tag=70)#t here is a friend
             else:
                 # Apply damage
                 local_unit.damage_taken += damage
                 comm.send(2, dest=attacker_rank, tag=70)
 
+    # an attack of a unit
     def attack(self, unit: Unit):
         """
         Handle the logic of a single unit attacking its potential targets.
@@ -375,6 +383,7 @@ class Worker:
         if(not unit.can_attack()):
             return
 
+        # attacks to a single coordinate in the grid
         def attack_coord(x, y):
             # If within the global grid
             if 0 <= x < Utils.N and 0 <= y < Utils.N:
@@ -410,8 +419,10 @@ class Worker:
                 nx2, ny2 = nx + dx, ny + dy
                 attack_coord(nx2, ny2)
 
+    # applies inferno to all the fire units
     def apply_inferno(self):
 
+        # checks if the attacked enemy is dead
         def is_inferno_available(unit: FireUnit):
             for [row, column] in unit.enemies_attacked:
                 enemy = self.block.get_grid_with_boundary_element(row, column)
@@ -430,25 +441,3 @@ class Worker:
 
                         unit.reset_enemies_attacked()
 
-    # def request_data(self, coordinates):
-    #     """
-    #     Example of requesting data from another worker's block.
-    #     """
-    #     dest_block_id = Utils.coordinates_to_block_id(
-    #         coordinates[0], coordinates[1], Utils.N, Utils.worker_count
-    #     )
-    #     comm.send([coordinates, self.rank], dest=dest_block_id, tag=69)
-    #     data = comm.recv(source=dest_block_id, tag=MPI.ANY_TAG)
-    #     print(f"Worker {self.rank}: Requested data at {coordinates}, received: {data}")
-
-    # def send_data(self):
-    #     """
-    #     Example of providing data to a requesting worker (tag=69).
-    #     """
-    #     request = comm.recv(source=MPI.ANY_SOURCE, tag=69)
-    #     if request is None:
-    #         self.state = -1
-    #         return
-    #     coord, requester_rank = request
-    #     data = self.block.get_grid_element(coord[0], coord[1])
-    #     comm.send(data, dest=requester_rank, tag=69)
